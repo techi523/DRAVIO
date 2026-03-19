@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "lib": ["ESNext"],
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@dravio/shared-ts": ["packages/shared-ts/src/index.ts"],
+      "@dravio/shared-ts/*": ["packages/shared-ts/src/*"]
+    },
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true
+  }
+}

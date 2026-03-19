@@ -1,0 +1,16 @@
+{
+  "name": "@dravio/auth-middleware",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "fastify": "^4.26.2",
+    "@fastify/jwt": "^8.0.0",
+    "typescript": "^5.4.2"
+  }
+}

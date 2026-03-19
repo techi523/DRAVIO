@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #020308;
+  --foreground: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+@layer components {
+  .tactical-border {
+    @apply border border-white/5 bg-command-mid/50 backdrop-blur-sm;
+  }
+  
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+}
