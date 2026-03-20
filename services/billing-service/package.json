@@ -1,5 +1,5 @@
 {
-  "name": "@dravio/payment-service",
+  "name": "@dravio/billing-service",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -15,12 +15,11 @@
     "@fastify/jwt": "^8.0.0",
     "fastify": "^4.26.2",
     "pg": "^8.11.3",
-    "stripe": "^14.22.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/node": "^20.19.37",
-    "@types/pg": "^8.18.0",
+    "@types/node": "^20.11.24",
+    "@types/pg": "^8.11.2",
     "tsx": "^4.7.1",
     "typescript": "^5.4.2"
   }

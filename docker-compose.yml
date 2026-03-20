@@ -91,9 +91,21 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
       - KAFKA_URL=kafka:9092
+      - USER_SERVICE_URL=http://user-service:3002
     depends_on:
       - postgres
       - kafka
+      - user-service
+
+  user-service:
+    build:
+      context: ./services/user-service
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+    depends_on:
+      - postgres
 
   session-service:
     build:
@@ -128,6 +140,16 @@ services:
     depends_on:
       - kafka
       - redis
+
+  billing-service:
+    build:
+      context: ./services/billing-service
+    ports:
+      - "3006:3006"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+    depends_on:
+      - postgres
 
   buyer-web:
     build:

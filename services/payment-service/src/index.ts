@@ -4,13 +4,24 @@ import cors from '@fastify/cors';
 import { authMiddleware } from '@dravio/auth-middleware';
 import { pool } from './db/client.js';
 
+declare module 'fastify' {
+  export interface FastifyInstance {
+    authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>;
+    authorize(requiredRoles: string[]): (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  }
+}
+
 const fastify: FastifyInstance = Fastify({ logger: true });
 
-await fastify.register(cors);
-await fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
-});
-await fastify.register(authMiddleware);
+async function init() {
+  await fastify.register(cors);
+  await fastify.register(jwt, {
+    secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
+  });
+  await fastify.register(authMiddleware);
+}
+
+// await init(); // moved to bootstrap
 
 fastify.get('/health', async () => {
   return { status: 'ok', service: 'payment-service' };
@@ -73,4 +84,14 @@ const start = async () => {
   }
 };
 
-start();
+async function bootstrap() {
+  await init();
+  await start();
+}
+
+bootstrap().catch(err => {
+  if (err) {
+    console.error(err);
+  }
+  process.exit(1);
+});

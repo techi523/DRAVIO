@@ -4,14 +4,24 @@ import cors from '@fastify/cors';
 import { Redis } from 'ioredis';
 import { authMiddleware } from '@dravio/auth-middleware';
 
+declare module 'fastify' {
+  export interface FastifyInstance {
+    authenticate(request: FastifyRequest, reply: FastifyReply, requiredRoles?: string[]): Promise<void>;
+  }
+}
+
 const fastify: FastifyInstance = Fastify({ logger: true });
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
-await fastify.register(cors);
-await fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
-});
-await fastify.register(authMiddleware);
+async function init() {
+  await fastify.register(cors);
+  await fastify.register(jwt, {
+    secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
+  });
+  await fastify.register(authMiddleware);
+}
+
+// await init(); // moved to bootstrap
 
 fastify.get('/health', async () => {
   return { status: 'ok', service: 'marketplace-service' };
@@ -73,5 +83,15 @@ const start = async () => {
   }
 };
 
-start();
+async function bootstrap() {
+  await init();
+  await start();
+}
+
+bootstrap().catch(err => {
+  if (err) {
+    console.error(err);
+  }
+  process.exit(1);
+});
 

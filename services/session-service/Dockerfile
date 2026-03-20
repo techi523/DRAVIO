@@ -1,6 +1,7 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.22-alpine AS builder
 WORKDIR /app
-COPY go.mod go.sum ./
+ENV GOPROXY=direct
+COPY go.mod ./
 RUN go mod download
 COPY . .
 RUN go build -o main cmd/main.go

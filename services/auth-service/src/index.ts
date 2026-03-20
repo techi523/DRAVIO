@@ -6,16 +6,27 @@ import axios from 'axios';
 import { authMiddleware } from '@dravio/auth-middleware';
 import { pool } from './db/client.js';
 
+declare module 'fastify' {
+  export interface FastifyInstance {
+    authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>;
+    authorize(requiredRoles: string[]): (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  }
+}
+
 const fastify: FastifyInstance = Fastify({ logger: true });
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3002';
 
-// Register plugins
-await fastify.register(cors);
-await fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
-});
-await fastify.register(authMiddleware);
+async function init() {
+  // Register plugins
+  await fastify.register(cors);
+  await fastify.register(jwt, {
+    secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
+  });
+  await fastify.register(authMiddleware);
+}
+
+await init();
 
 // Health check
 fastify.get('/health', async () => {
@@ -88,5 +99,15 @@ const start = async () => {
   }
 };
 
-start();
+async function bootstrap() {
+  await init();
+  await start();
+}
+
+bootstrap().catch(err => {
+  if (err) {
+    console.error(err);
+  }
+  process.exit(1);
+});
 
