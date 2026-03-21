@@ -2,16 +2,16 @@ import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
 import { authMiddleware } from '@dravio/auth-middleware';
-import { pool } from './db/client.js';
+import { GenerateInvoiceSchema } from './schema/billing.schema.js';
+import { billingService } from './services/billing.service.js';
+import { billingRepository } from './repositories/billing.repository.js';
+import { sendSuccess, sendError } from './utils/response.js';
 
-declare module 'fastify' {
-  export interface FastifyInstance {
-    authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>;
-    authorize(requiredRoles: string[]): (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
-
-const fastify: FastifyInstance = Fastify({ logger: true });
+const fastify: FastifyInstance = Fastify({ 
+  logger: {
+    level: 'info'
+  } 
+});
 
 async function init() {
   await fastify.register(cors);
@@ -21,60 +21,46 @@ async function init() {
   await fastify.register(authMiddleware);
 }
 
-// await init(); // moved to bootstrap
+// Health check
+fastify.get('/health', async () => ({ status: 'ok', service: 'billing-service' }));
 
-fastify.get('/health', async () => {
-  return { status: 'ok', service: 'billing-service' };
-});
-
-// Generate an invoice based on usage records
+// Generate invoice
 fastify.post('/v1/billing/invoices/generate', async (request: FastifyRequest, reply: FastifyReply) => {
-  const { customer_id, isp_id } = request.body as any;
-  
+  const result = GenerateInvoiceSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
+
   try {
-    // 1. Sum up usage for this customer that hasn't been invoiced yet
-    const usageResult = await pool.query(
-      "SELECT SUM(bytes_used) as total_bytes FROM billing.usage_records WHERE customer_id = $1 AND recorded_at > (SELECT COALESCE(MAX(created_at), '1970-01-01') FROM billing.invoices WHERE customer_id = $1)",
-      [customer_id]
-    );
-    
-    const bytesUsed = BigInt(usageResult.rows[0].total_bytes || '0');
-    if (bytesUsed === 0n) {
-      return { success: true, message: 'No new usage to invoice' };
+    const invoice = await billingService.generateInvoice(result.data);
+    if (!invoice) {
+        return sendSuccess(reply, { message: 'No new usage to invoice' });
     }
-
-    // 2. Calculate amount (simplified pricing for MVP: $0.01 per MB)
-    const amountUsd = (Number(bytesUsed) / (1024 * 1024)) * 0.01;
-    
-    // 3. Create invoice
-    const invoiceResult = await pool.query(
-      "INSERT INTO billing.invoices (customer_id, isp_id, amount_usd, currency, due_date) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP + INTERVAL '30 days') RETURNING id",
-      [customer_id, isp_id, amountUsd, 'USD']
-    );
-
-    return { success: true, invoice_id: invoiceResult.rows[0].id, amount_usd: amountUsd };
-  } catch (err) {
+    return sendSuccess(reply, { invoice_id: invoice.id, amount_usd: invoice.amount_usd }, 201);
+  } catch (err: any) {
     fastify.log.error(err);
-    return reply.code(500).send({ success: false, error: 'INVOICE_GENERATION_FAILED' });
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
   }
 });
 
-// List invoices for a customer
-fastify.get('/v1/billing/invoices', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
+// List invoices
+fastify.get('/v1/billing/invoices', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
   const customerId = (request.user as any).sub;
   
-  const result = await pool.query(
-    'SELECT * FROM billing.invoices WHERE customer_id = $1 ORDER BY created_at DESC',
-    [customerId]
-  );
-  
-  return { success: true, invoices: result.rows };
+  try {
+    const invoices = await billingRepository.listInvoicesByCustomer(customerId);
+    return sendSuccess(reply, { invoices });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
 });
 
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3006');
     await fastify.listen({ port, host: '0.0.0.0' });
+    console.log(`Billing service listening on port ${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -87,8 +73,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch(err => {
-  if (err) {
-    console.error(err);
-  }
+  console.error('Fatal bootstrap error:', err);
   process.exit(1);
 });

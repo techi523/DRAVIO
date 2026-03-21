@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: dravio-postgres
+    restart: always
     environment:
       POSTGRES_USER: dravio_user
       POSTGRES_PASSWORD: dravio_password
@@ -12,26 +13,51 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dravio_user -d dravio_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   redis:
     image: redis:7-alpine
     container_name: dravio-redis
+    restart: always
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.5.0
     container_name: dravio-zookeeper
+    restart: always
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   metering-service:
     build:
-      context: ./services/metering-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/metering-service/Dockerfile
     environment:
       - KAFKA_URL=kafka:9092
       - REDIS_URL=redis:6379
@@ -41,10 +67,10 @@ services:
 
   fraud-discovery:
     build:
-      context: ./services/fraud-discovery
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/fraud-discovery/Dockerfile
     ports:
-      - "8081:8081"
+      - "8082:8081"
     environment:
       - KAFKA_URL=kafka:9092
     depends_on:
@@ -52,8 +78,8 @@ services:
 
   audit-service:
     build:
-      context: ./services/audit-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/audit-service/Dockerfile
     environment:
       - KAFKA_URL=kafka:9092
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
@@ -63,8 +89,8 @@ services:
 
   analytics-service:
     build:
-      context: ./services/analytics-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/analytics-service/Dockerfile
     environment:
       - KAFKA_URL=kafka:9092
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
@@ -74,8 +100,8 @@ services:
 
   admin-portal:
     build:
-      context: ./apps/admin-portal
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/admin-portal/Dockerfile
     ports:
       - "3001:3000"
     environment:
@@ -85,65 +111,91 @@ services:
 
   auth-service:
     build:
-      context: ./services/auth-service
+      context: .
+      dockerfile: services/auth-service/Dockerfile
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+      - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
       - KAFKA_URL=kafka:9092
       - USER_SERVICE_URL=http://user-service:3002
+      - JWT_SECRET=prod-placeholder-change-me
     depends_on:
-      - postgres
-      - kafka
-      - user-service
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      user-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   user-service:
     build:
-      context: ./services/user-service
+      context: .
+      dockerfile: services/user-service/Dockerfile
     ports:
       - "3002:3002"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+      - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "3002"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   session-service:
     build:
-      context: ./services/session-service
+      context: .
+      dockerfile: services/session-service/Dockerfile
     ports:
       - "8085:3005"
     environment:
       - KAFKA_URL=kafka:9092
       - REDIS_URL=redis:6379
     depends_on:
-      - kafka
-      - redis
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   payment-service:
     build:
-      context: ./services/payment-service
+      context: .
+      dockerfile: services/payment-service/Dockerfile
     ports:
       - "3005:3005"
     environment:
       - KAFKA_URL=kafka:9092
     depends_on:
-      - kafka
+      kafka:
+        condition: service_started
 
   marketplace-service:
     build:
-      context: ./services/marketplace-service
+      context: .
+      dockerfile: services/marketplace-service/Dockerfile
     ports:
-      - "3002:3000"
+      - "3003:3000"
     environment:
       - KAFKA_URL=kafka:9092
       - REDIS_URL=redis:6379
     depends_on:
-      - kafka
-      - redis
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   billing-service:
     build:
-      context: ./services/billing-service
+      context: .
+      dockerfile: services/billing-service/Dockerfile
     ports:
       - "3006:3006"
     environment:
@@ -153,7 +205,8 @@ services:
 
   buyer-web:
     build:
-      context: ./apps/buyer-web
+      context: .
+      dockerfile: apps/buyer-web/Dockerfile
     ports:
       - "8000:3000"
     environment:
@@ -163,7 +216,8 @@ services:
 
   isp-service:
     build:
-      context: ./services/isp-service
+      context: .
+      dockerfile: services/isp-service/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -172,33 +226,34 @@ services:
       - kafka
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.5.0
     container_name: dravio-kafka
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   kafka-setup:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.5.0
     container_name: dravio-kafka-setup
     depends_on:
       - kafka
     command: >
       bash -c "echo 'Waiting for Kafka to be ready...' && \
       cub kafka-ready -b kafka:9092 1 30 && \
-      kafka-topics --create --if-not-exists --zookeeper zookeeper:2181 --partitions 3 --replication-factor 1 --topic dm.auth.user_registered && \
-      kafka-topics --create --if-not-exists --zookeeper zookeeper:2181 --partitions 3 --replication-factor 1 --topic dm.session.started && \
-      kafka-topics --create --if-not-exists --zookeeper zookeeper:2181 --partitions 3 --replication-factor 1 --topic dm.session.completed && \
-      kafka-topics --create --if-not-exists --zookeeper zookeeper:2181 --partitions 3 --replication-factor 1 --topic dm.payment.completed && \
-      kafka-topics --create --if-not-exists --zookeeper zookeeper:2181 --partitions 3 --replication-factor 1 --topic dm.metering.update && \
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic dm.auth.user_registered && \
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic dm.session.started && \
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic dm.session.completed && \
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic dm.payment.completed && \
+      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic dm.metering.update && \
       echo 'Kafka topics created successfully.'"
 
 volumes:

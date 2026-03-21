@@ -1,9 +1,9 @@
 FROM golang:1.22-alpine AS builder
 WORKDIR /app
-ENV GOPROXY=direct
-COPY go.mod ./
+RUN apk add --no-cache git
+COPY services/session-service/go.mod services/session-service/go.sum ./
 RUN go mod download
-COPY . .
+COPY services/session-service/. .
 RUN go build -o main cmd/main.go
 
 FROM alpine:latest

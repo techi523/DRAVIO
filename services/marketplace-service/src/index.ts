@@ -1,17 +1,16 @@
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
-import { Redis } from 'ioredis';
 import { authMiddleware } from '@dravio/auth-middleware';
+import { HeartbeatSchema, SearchSchema } from './schema/marketplace.schema.js';
+import { marketplaceService } from './services/marketplace.service.js';
+import { sendSuccess, sendError } from './utils/response.js';
 
-declare module 'fastify' {
-  export interface FastifyInstance {
-    authenticate(request: FastifyRequest, reply: FastifyReply, requiredRoles?: string[]): Promise<void>;
-  }
-}
-
-const fastify: FastifyInstance = Fastify({ logger: true });
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const fastify: FastifyInstance = Fastify({ 
+  logger: {
+    level: 'info'
+  } 
+});
 
 async function init() {
   await fastify.register(cors);
@@ -21,62 +20,49 @@ async function init() {
   await fastify.register(authMiddleware);
 }
 
-// await init(); // moved to bootstrap
+// Health check
+fastify.get('/health', async () => ({ status: 'ok', service: 'marketplace-service' }));
 
-fastify.get('/health', async () => {
-  return { status: 'ok', service: 'marketplace-service' };
-});
+// Seller heartbeat
+fastify.post('/v1/marketplace/heartbeat', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  const result = HeartbeatSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
 
-// Seller heartbeat: updates location and availability in Redis
-fastify.post('/v1/marketplace/heartbeat', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
   const sellerId = (request.user as any).sub;
-  const { lat, lon, price_per_gb } = request.body as any;
-  
-  // Store location for geo-search (expiry 5 mins)
-  await redis.geoadd('active_sellers_geo', lon, lat, sellerId);
-  
-  // Store metadata in a hash with 300s TTL
-  await redis.hset(`seller:${sellerId}`, {
-    price: price_per_gb,
-    last_seen: Date.now().toString()
-  });
-  await redis.expire(`seller:${sellerId}`, 300);
 
-  return { success: true };
+  try {
+    await marketplaceService.registerHeartbeat(sellerId, result.data);
+    return sendSuccess(reply, { success: true });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
 });
 
-// Search sellers by geo-location (real Redis GEOSEARCH)
+// Search sellers by geo-location
 fastify.get('/v1/marketplace/search', async (request: FastifyRequest, reply: FastifyReply) => {
-  const { lat, lon, radius = 5, unit = 'km' } = request.query as any;
-  
-  // Find sellers within radius
-  const sellerIds = await redis.geosearch(
-    'active_sellers_geo',
-    'FROMLONLAT', lon, lat,
-    'BYRADIUS', radius, unit,
-    'WITHDIST'
-  ) as any[];
+  // Use query params
+  const result = SearchSchema.safeParse(request.query);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
 
-  // Fetch metadata for each seller
-  const results = await Promise.all(sellerIds.map(async (row: any) => {
-    const [id, dist] = row;
-    const meta = await redis.hgetall(`seller:${id}`);
-    return {
-      id,
-      distance: dist,
-      unit,
-      price_per_gb: parseFloat(meta.price || '0'),
-      last_seen: parseInt(meta.last_seen || '0')
-    };
-  }));
-
-  return { results };
+  try {
+    const results = await marketplaceService.findNearbySellers(result.data);
+    return sendSuccess(reply, { results });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
 });
 
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3003');
     await fastify.listen({ port, host: '0.0.0.0' });
+    console.log(`Marketplace service listening on port ${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -89,9 +75,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch(err => {
-  if (err) {
-    console.error(err);
-  }
+  console.error('Fatal bootstrap error:', err);
   process.exit(1);
 });
-

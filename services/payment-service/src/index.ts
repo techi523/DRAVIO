@@ -2,16 +2,24 @@ import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
 import { authMiddleware } from '@dravio/auth-middleware';
-import { pool } from './db/client.js';
+import { InitiatePaymentSchema, WebhookSchema } from './schema/payment.schema.js';
+import { paymentService } from './services/payment.service.js';
+import { sendSuccess, sendError } from './utils/response.js';
 
-declare module 'fastify' {
-  export interface FastifyInstance {
-    authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>;
-    authorize(requiredRoles: string[]): (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
-
-const fastify: FastifyInstance = Fastify({ logger: true });
+const fastify: FastifyInstance = Fastify({ 
+  logger: {
+    level: 'info',
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+          remoteAddress: request.ip,
+        };
+      },
+    },
+  } 
+});
 
 async function init() {
   await fastify.register(cors);
@@ -21,63 +29,53 @@ async function init() {
   await fastify.register(authMiddleware);
 }
 
-// await init(); // moved to bootstrap
+// Health check
+fastify.get('/health', async () => ({ status: 'ok', service: 'payment-service' }));
 
-fastify.get('/health', async () => {
-  return { status: 'ok', service: 'payment-service' };
-});
+// Initiate a payment
+fastify.post('/v1/payments/initiate', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  const result = InitiatePaymentSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
 
-// Initiate a payment (Buyer App -> Gateway -> Payment Service)
-fastify.post('/v1/payments/initiate', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
-  const { amount_usd, currency, method, session_id } = request.body as any;
   const userId = (request.user as any).sub;
 
   try {
-    // 1. Log transaction as PENDING in local DB
-    const result = await pool.query(
-      'INSERT INTO payments.transactions (session_id, user_id, amount_usd, currency, payment_method, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-      [session_id, userId, amount_usd, currency || 'USD', method, 'PENDING']
-    );
-    const transactionId = result.rows[0].id;
-
-    // 2. Mocking Stripe/M-Pesa payment intent creation
-    // const intent = await stripe.paymentIntents.create({ amount: amount_usd * 100, ... });
-    const providerRef = `mock_intent_${Date.now()}`;
-    
-    await pool.query('UPDATE payments.transactions SET provider_ref = $1 WHERE id = $2', [providerRef, transactionId]);
-
-    return { 
-      success: true, 
-      payment_id: transactionId, 
-      provider_ref: providerRef,
-      checkout_url: `https://checkout.dravio.com/${providerRef}` 
-    };
-  } catch (err) {
+    const payment = await paymentService.initiatePayment(userId, result.data);
+    return sendSuccess(reply, payment, 201);
+  } catch (err: any) {
     fastify.log.error(err);
-    return reply.code(500).send({ success: false, error: 'PAYMENT_INITIATION_FAILED' });
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
   }
 });
 
 // Webhook for payment confirmation
 fastify.post('/v1/payments/webhook', async (request: FastifyRequest, reply: FastifyReply) => {
-  const { event, provider_ref } = request.body as any;
-  
-  if (event === 'payment_intent.succeeded') {
-    await pool.query(
-      'UPDATE payments.transactions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE provider_ref = $2',
-      ['COMPLETED', provider_ref]
-    );
-    
-    // TODO: Emit Kafka event dm.payment.completed
-    fastify.log.info(`Payment completed for ref: ${provider_ref}`);
+  const result = WebhookSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
   }
 
-  return { received: true };
+  const { event, provider_ref } = result.data;
+  
+  try {
+    const transaction = await paymentService.handleWebhook(provider_ref, event);
+    if (!transaction && event === 'payment_intent.succeeded') {
+      return sendError(reply, 'TRANSACTION_NOT_FOUND', 404);
+    }
+    return sendSuccess(reply, { received: true });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
 });
 
 const start = async () => {
   try {
-    await fastify.listen({ port: 3004, host: '0.0.0.0' });
+    const port = parseInt(process.env.PORT || '3004');
+    await fastify.listen({ port, host: '0.0.0.0' });
+    console.log(`Payment service listening on port ${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -90,8 +88,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch(err => {
-  if (err) {
-    console.error(err);
-  }
+  console.error('Fatal bootstrap error:', err);
   process.exit(1);
 });

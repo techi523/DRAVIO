@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Secure, P2P high-speed data tunneling and session management.",
 };
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -1,12 +1,12 @@
 FROM golang:1.22-alpine
 
 WORKDIR /app
-ENV GOPROXY=direct
+RUN apk add --no-cache git
 
-COPY go.mod ./
+COPY services/metering-service/go.mod services/metering-service/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY services/metering-service/. .
 
 RUN go build -o metering ./cmd/main.go
 

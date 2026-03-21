@@ -2,16 +2,25 @@ import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
 import { authMiddleware } from '@dravio/auth-middleware';
-import { pool } from './db/client.js';
+import { CreateProfileSchema } from './schema/user.schema.js';
+import { userRepository } from './repositories/user.repository.js';
+import { sendSuccess, sendError } from './utils/response.js';
 
-declare module 'fastify' {
-  export interface FastifyInstance {
-    authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>;
-    authorize(requiredRoles: string[]): (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
-
-const fastify: FastifyInstance = Fastify({ logger: true });
+const fastify: FastifyInstance = Fastify({ 
+  logger: {
+    level: 'info',
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+          headers: request.headers,
+          remoteAddress: request.ip,
+        };
+      },
+    },
+  } 
+});
 
 async function init() {
   await fastify.register(cors);
@@ -21,43 +30,46 @@ async function init() {
   await fastify.register(authMiddleware);
 }
 
-// await init(); // moved to bootstrap
+// Health check
+fastify.get('/health', async () => ({ status: 'ok', service: 'user-service' }));
 
-fastify.get('/health', async () => {
-  return { status: 'ok', service: 'user-service' };
-});
-
-// Create profile (called by auth-service)
+// Create profile (Internal call from auth-service)
 fastify.post('/v1/users', async (request: FastifyRequest, reply: FastifyReply) => {
-  const { auth_user_id, full_name, country_code } = request.body as any;
-  
-  const result = await pool.query(
-    'INSERT INTO users.profiles (auth_user_id, full_name, country_code) VALUES ($1, $2, $3) RETURNING id',
-    [auth_user_id, full_name, country_code]
-  );
-  
-  return { success: true, profileId: result.rows[0].id };
+  const result = CreateProfileSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
+
+  try {
+    const profileId = await userRepository.create(result.data);
+    return sendSuccess(reply, { profileId }, 201);
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
 });
 
 // Get self profile
-fastify.get('/v1/users/me', { preHandler: [fastify.authenticate] }, async (request: FastifyRequest, reply: FastifyReply) => {
+fastify.get('/v1/users/me', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
   const authUserId = (request.user as any).sub;
   
-  const result = await pool.query(
-    'SELECT * FROM users.profiles WHERE auth_user_id = $1',
-    [authUserId]
-  );
-  
-  if (result.rows.length === 0) {
-    return reply.code(404).send({ success: false, error: 'PROFILE_NOT_FOUND' });
+  try {
+    const profile = await userRepository.findByAuthId(authUserId);
+    if (!profile) {
+      return sendError(reply, 'PROFILE_NOT_FOUND', 404);
+    }
+    return sendSuccess(reply, { profile });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
   }
-  
-  return { success: true, profile: result.rows[0] };
 });
 
 const start = async () => {
   try {
-    await fastify.listen({ port: 3002, host: '0.0.0.0' });
+    const port = parseInt(process.env.PORT || '3002');
+    await fastify.listen({ port, host: '0.0.0.0' });
+    console.log(`User service listening on port ${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -70,8 +82,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch(err => {
-  if (err) {
-    console.error(err);
-  }
+  console.error('Fatal bootstrap error:', err);
   process.exit(1);
 });

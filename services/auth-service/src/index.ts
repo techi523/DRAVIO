@@ -1,24 +1,30 @@
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
-import bcrypt from 'bcrypt';
-import axios from 'axios';
 import { authMiddleware } from '@dravio/auth-middleware';
-import { pool } from './db/client.js';
+import { RegisterSchema, LoginSchema } from './schema/auth.schema.js';
+import { authService } from './services/auth.service.js';
+import { sendSuccess, sendError } from './utils/response.js';
 
-declare module 'fastify' {
-  export interface FastifyInstance {
-    authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>;
-    authorize(requiredRoles: string[]): (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
-
-const fastify: FastifyInstance = Fastify({ logger: true });
-
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3002';
+const fastify: FastifyInstance = Fastify({ 
+  logger: {
+    level: 'info',
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+          headers: request.headers,
+          hostname: request.hostname,
+          remoteAddress: request.ip,
+          remotePort: request.socket.remotePort,
+        };
+      },
+    },
+  } 
+});
 
 async function init() {
-  // Register plugins
   await fastify.register(cors);
   await fastify.register(jwt, {
     secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
@@ -26,73 +32,53 @@ async function init() {
   await fastify.register(authMiddleware);
 }
 
-await init();
-
 // Health check
-fastify.get('/health', async () => {
-  return { status: 'ok', service: 'auth-service' };
-});
+fastify.get('/health', async () => ({ status: 'ok', service: 'auth-service', timestamp: new Date().toISOString() }));
 
-// Registration logic
+// Registration
 fastify.post('/v1/auth/register', async (request: FastifyRequest, reply: FastifyReply) => {
-  const { email, password, full_name, country_code } = request.body as any;
-  
-  const passwordHash = await bcrypt.hash(password, 10);
-  
-  try {
-    const result = await pool.query(
-      'INSERT INTO auth.users (email, password_hash) VALUES ($1, $2) RETURNING id',
-      [email, passwordHash]
-    );
-    
-    const userId = result.rows[0].id;
-    
-    // Call user-service to create profile
-    try {
-      await axios.post(`${USER_SERVICE_URL}/v1/users`, { 
-        auth_user_id: userId, 
-        full_name, 
-        country_code 
-      });
-    } catch (userErr) {
-      // Rollback auth user if profile creation fails (simplified for MVP)
-      await pool.query('DELETE FROM auth.users WHERE id = $1', [userId]);
-      return reply.code(500).send({ success: false, error: 'PROFILE_CREATION_FAILED' });
-    }
+  const result = RegisterSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
 
-    return { success: true, userId };
+  try {
+    const userId = await authService.register(result.data);
+    return sendSuccess(reply, { userId }, 201);
   } catch (err: any) {
-    if (err.code === '23505') { // Unique violation
-      return reply.code(400).send({ success: false, error: 'EMAIL_ALREADY_EXISTS' });
+    if (err.message === 'EMAIL_ALREADY_EXISTS') {
+      return sendError(reply, 'EMAIL_ALREADY_EXISTS', 400);
     }
-    throw err;
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
   }
 });
 
-// Login logic
+// Login
 fastify.post('/v1/auth/login', async (request: FastifyRequest, reply: FastifyReply) => {
-  const { email, password } = request.body as any;
-  
-  const result = await pool.query('SELECT id, password_hash FROM auth.users WHERE email = $1', [email]);
-  if (result.rows.length === 0) {
-    return reply.code(401).send({ success: false, error: 'INVALID_CREDENTIALS' });
+  const result = LoginSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
   }
 
-  const user = result.rows[0];
-  const isValid = await bcrypt.compare(password, user.password_hash);
-  
-  if (!isValid) {
-    return reply.code(401).send({ success: false, error: 'INVALID_CREDENTIALS' });
+  try {
+    const user = await authService.login(result.data);
+    const token = fastify.jwt.sign({ sub: user.id, roles: ['buyer'] });
+    return sendSuccess(reply, { access_token: token });
+  } catch (err: any) {
+    if (err.message === 'INVALID_CREDENTIALS') {
+      return sendError(reply, 'INVALID_CREDENTIALS', 401);
+    }
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
   }
-
-  const token = fastify.jwt.sign({ sub: user.id, roles: ['buyer'] });
-  return { success: true, access_token: token };
 });
 
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || '3001');
+    const port = parseInt(process.env.PORT || '3000');
     await fastify.listen({ port, host: '0.0.0.0' });
+    console.log(`Auth service listening on port ${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -105,9 +91,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch(err => {
-  if (err) {
-    console.error(err);
-  }
+  console.error('Fatal bootstrap error:', err);
   process.exit(1);
 });
-

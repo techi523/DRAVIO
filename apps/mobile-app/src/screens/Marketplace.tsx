@@ -1,15 +1,27 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Colors } from '../theme/colors';
 import TunnelMonitor from '../components/TunnelMonitor';
-
-const SELLERS = [
-  { id: "1", name: "Alpha Relay #01", ping: "14ms", price: "$0.50/GB", location: "Nairobi, KE" },
-  { id: "2", name: "Node X-Prime", ping: "22ms", price: "$0.45/GB", location: "Lagos, NG" },
-  { id: "3", name: "Starlink B-7", ping: "45ms", price: "$1.20/GB", location: "Cape Town, ZA" },
-];
+import { api } from '../services/api';
 
 export default function Marketplace() {
+  const [sellers, setSellers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSellers = async () => {
+      try {
+        const data = await api.get<any>('/v1/marketplace/search?lat=0&lon=0');
+        setSellers(data.results || []);
+      } catch (err) {
+        console.error('Failed to fetch sellers:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSellers();
+  }, []);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 40}}>
       <View style={styles.hero}>
@@ -20,23 +32,28 @@ export default function Marketplace() {
       <TunnelMonitor />
 
       <Text style={styles.sectionTitle}>High Reliability Sellers</Text>
-      {SELLERS.map(s => (
-        <TouchableOpacity key={s.id} style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.relayIcon} />
-            <View>
-              <Text style={styles.relayName}>{s.name}</Text>
-              <Text style={styles.relayMeta}>{s.location} • {s.ping}</Text>
+      
+      {loading ? (
+        <ActivityIndicator color={Colors.primary} size="large" />
+      ) : (
+        sellers.map(s => (
+          <TouchableOpacity key={s.id} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.relayIcon} />
+              <View>
+                <Text style={styles.relayName}>{s.name || `Relay #${s.id.slice(0,4)}`}</Text>
+                <Text style={styles.relayMeta}>{s.location || 'Nairobi, KE'} • {s.distance?.toFixed(1) || '0.5'}{s.unit || 'km'}</Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.cardPrice}>
-            <Text style={styles.priceText}>{s.price}</Text>
-            <TouchableOpacity style={styles.buyBtn}>
-              <Text style={styles.buyBtnText}>BUY</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      ))}
+            <View style={styles.cardPrice}>
+              <Text style={styles.priceText}>${s.price_per_gb?.toFixed(2) || '0.50'}/GB</Text>
+              <TouchableOpacity style={styles.buyBtn}>
+                <Text style={styles.buyBtnText}>BUY</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        ))
+      )}
     </ScrollView>
   );
 }
@@ -68,12 +85,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   card: {
-    backgroundColor: Colors.surfaceMid,
+    backgroundColor: 'rgba(20, 22, 46, 0.7)',
     padding: 20,
     borderRadius: 20,
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -83,9 +105,14 @@ const styles = StyleSheet.create({
   relayIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: Colors.surfaceHigh,
+    borderRadius: 14,
+    backgroundColor: Colors.secondary,
     marginRight: 16,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 5,
   },
   relayName: {
     fontSize: 16,
@@ -109,13 +136,19 @@ const styles = StyleSheet.create({
   },
   buyBtn: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 100,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buyBtnText: {
     color: '#000',
     fontWeight: '900',
-    fontSize: 12,
+    fontSize: 14,
+    letterSpacing: 0.5,
   }
 });

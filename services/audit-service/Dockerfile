@@ -1,10 +1,9 @@
 FROM node:20-alpine
 
 WORKDIR /app
-
-COPY package*.json ./
-RUN npm install --production
-
-COPY . .
+COPY packages ./packages
+COPY services/audit-service ./services/audit-service
+WORKDIR /app/services/audit-service
+RUN npm install
 
 CMD ["npm", "start"]

@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/dravio/session-service/internal/orchestrator"
 	"github.com/dravio/session-service/internal/wireguard"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/segmentio/kafka-go"
 )
@@ -75,7 +77,7 @@ func main() {
 		// 2. Generate Keys
 		priv, _, _ := wireguard.GenerateKeyPair()
 		
-		sessionID := "sess_" + time.Now().Format("20060102150405")
+		sessionID := uuid.New().String()
 		
 		// 3. Emit Kafka event
 		msg, _ := json.Marshal(map[string]string{
@@ -86,9 +88,15 @@ func main() {
 			"relay_id":   relay.ID,
 		})
 		
-		kafkaWriter.WriteMessages(context.Background(),
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err := kafkaWriter.WriteMessages(ctx,
 			kafka.Message{Key: []byte(sessionID), Value: msg},
 		)
+		if err != nil {
+			fmt.Printf("Kafka write error: %v\n", err)
+		}
 
 		return c.JSON(http.StatusCreated, map[string]string{
 			"session_id": sessionID,
