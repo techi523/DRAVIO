@@ -135,10 +135,18 @@ body {
   pointer-events: none;
 }
 
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .glass-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-8px) scale(1.02);
   border-color: var(--color-primary);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 15px var(--color-glass-hover);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 242, 255, 0.2);
 }
 
 .card-header {

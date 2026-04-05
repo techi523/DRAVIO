@@ -53,28 +53,3 @@ async def isp_usage_webhook(isp_id: str, payload: dict = Body(...)):
     print(f"Received usage webhook from {isp_id}: {payload}")
     return {"status": "received"}
 
-@app.get("/v1/isp/{isp_id}/packages", response_model=List[ISPPackage])
-async def list_packages(isp_id: str):
-    adapter = ADAPTERS.get(isp_id)
-    if not adapter:
-        raise HTTPException(status_code=404, detail="ISP_NOT_FOUND")
-    return await adapter.list_packages()
-
-@app.post("/v1/isp/{isp_id}/activate", response_model=ActivationResponse)
-async def activate_data(isp_id: str, payload: dict = Body(...)):
-    adapter = ADAPTERS.get(isp_id)
-    if not adapter:
-        raise HTTPException(status_code=404, detail="ISP_NOT_FOUND")
-    
-    return await adapter.activate_data(
-        customer_id=payload.get("customer_id"),
-        package_id=payload.get("package_id"),
-        reference=payload.get("reference")
-    )
-
-@app.get("/v1/isp/{isp_id}/usage/{activation_id}", response_model=UsageResponse)
-async def check_usage(isp_id: str, activation_id: str):
-    adapter = ADAPTERS.get(isp_id)
-    if not adapter:
-        raise HTTPException(status_code=404, detail="ISP_NOT_FOUND")
-    return await adapter.check_usage(activation_id)

@@ -5,57 +5,67 @@ import cors from '@fastify/cors';
 
 const fastify = Fastify({ logger: true });
 
-await fastify.register(cors);
-await fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
-});
+async function init() {
+  await fastify.register(cors);
+  await fastify.register(jwt, {
+    secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
+  });
 
-fastify.get('/health', async () => {
-  return { status: 'ok', service: 'gateway-service' };
-});
+  // Root health check (ISSUE 1 Fix)
+  fastify.get('/', async () => {
+    return {
+      status: "ok",
+      service: "dravio-api",
+      version: "1.0.0",
+      timestamp: new Date().toISOString(),
+      environment: "development"
+    };
+  });
 
-// Proxy routes to microservices
-fastify.register(proxy, {
-  upstream: 'http://localhost:3001',
-  prefix: '/v1/auth',
-  rewritePrefix: '/v1/auth'
-});
+  // Dedicated health check
+  fastify.get('/health', async () => {
+    return { status: 'ok', service: 'gateway-service' };
+  });
 
-fastify.register(proxy, {
-  upstream: 'http://localhost:3002',
-  prefix: '/v1/users',
-  rewritePrefix: '/v1/users'
-});
+  // Proxy routes to microservices (NEXT 1 Structure)
+  // Auth
+  fastify.register(proxy, {
+    upstream: 'http://auth-service:3000/v1/auth',
+    prefix: '/auth'
+  });
 
-fastify.register(proxy, {
-  upstream: 'http://localhost:3003',
-  prefix: '/v1/marketplace',
-  rewritePrefix: '/v1/marketplace'
-});
+  // Marketplace
+  fastify.register(proxy, {
+    upstream: 'http://marketplace-service:3000/v1/marketplace',
+    prefix: '/marketplace'
+  });
 
-fastify.register(proxy, {
-  upstream: 'http://localhost:3004',
-  prefix: '/v1/payments',
-  rewritePrefix: '/v1/payments'
-});
+  // Sessions
+  fastify.register(proxy, {
+    upstream: 'http://session-service:3005/v1/sessions',
+    prefix: '/sessions'
+  });
 
-fastify.register(proxy, {
-  upstream: 'http://localhost:3005',
-  prefix: '/v1/sessions',
-  rewritePrefix: '/v1/sessions'
-});
+  // Wallet (Billing)
+  fastify.register(proxy, {
+    upstream: 'http://billing-service:3006/v1/billing',
+    prefix: '/wallet'
+  });
 
-fastify.register(proxy, {
-  upstream: 'http://localhost:3006',
-  prefix: '/v1/billing',
-  rewritePrefix: '/v1/billing'
-});
+  // Legacy mappings (internal/refactored)
+  fastify.register(proxy, {
+    upstream: 'http://user-service:3002/v1/users',
+    prefix: '/v1/users'
+  });
+}
 
 const start = async () => {
   try {
-    await fastify.listen({ port: 8000, host: '0.0.0.0' });
+    await init();
+    await fastify.listen({ port: 8080, host: '0.0.0.0' });
+    console.log('Gateway service listening on port 8000');
   } catch (err) {
-    fastify.log.error(err);
+    console.error(err);
     process.exit(1);
   }
 };

@@ -124,6 +124,28 @@ func main() {
 		return c.JSON(http.StatusOK, result)
 	})
 
+	// Get active sessions
+	e.GET("/v1/sessions/active", func(c echo.Context) error {
+		// Mock active sessions for now
+		return c.JSON(http.StatusOK, []map[string]interface{}{
+			{
+				"session_id": uuid.New().String(),
+				"seller_id":  "relay_af_01",
+				"status":     "ACTIVE",
+				"start_time": time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
+			},
+		})
+	})
+
+	// End session
+	e.POST("/v1/sessions/:id/end", func(c echo.Context) error {
+		sessionID := c.Param("id")
+		return c.JSON(http.StatusOK, map[string]string{
+			"session_id": sessionID,
+			"status":     "COMPLETED",
+		})
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3005"

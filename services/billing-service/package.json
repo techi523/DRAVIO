@@ -13,7 +13,12 @@
     "@dravio/auth-middleware": "file:../../packages/auth-middleware",
     "@fastify/cors": "^9.0.1",
     "@fastify/jwt": "^8.0.0",
+    "axios": "^1.14.0",
+    "dotenv": "^17.4.0",
     "fastify": "^4.26.2",
+    "kafkajs": "^2.2.4",
+    "mongodb": "^7.1.1",
+    "mongoose": "^9.4.1",
     "pg": "^8.11.3",
     "zod": "^3.22.4"
   },

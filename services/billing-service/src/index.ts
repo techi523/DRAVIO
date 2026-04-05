@@ -56,6 +56,27 @@ fastify.get('/v1/billing/invoices', { preHandler: [(req, reply) => fastify.authe
   }
 });
 
+// Get balance
+fastify.get('/v1/billing/balance', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    return sendSuccess(reply, { balance_usd: 125.50 });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
+// Top up wallet
+fastify.post('/v1/billing/topup', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  const { amount_usd } = request.body as any;
+  try {
+    return sendSuccess(reply, { success: true, new_balance_usd: 125.50 + amount_usd });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3006');

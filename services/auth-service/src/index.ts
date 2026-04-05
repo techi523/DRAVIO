@@ -74,6 +74,18 @@ fastify.post('/v1/auth/login', async (request: FastifyRequest, reply: FastifyRep
   }
 });
 
+// Refresh Token
+fastify.post('/v1/auth/refresh', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const newToken = fastify.jwt.sign({ sub: user.sub, roles: user.roles });
+    return sendSuccess(reply, { access_token: newToken });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3000');
