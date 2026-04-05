@@ -5,7 +5,7 @@ function AdminDashboard() {
     return (<div className="p-8 space-y-8">
       <header className="flex justify-between items-center mb-12">
         <h1 className="text-xl font-mono font-black border-l-4 border-primary pl-4">COMMAND CENTER <span className="text-white/20 ml-2"> // OPS_DIRECT</span></h1>
-    // OPS_DIRECT</span></h1>
+
         <div className="flex gap-4">
           <div className="flex items-center gap-2 bg-success/10 px-4 py-1 rounded text-success text-[10px] font-bold">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"/> SYSTEM NOMINAL
