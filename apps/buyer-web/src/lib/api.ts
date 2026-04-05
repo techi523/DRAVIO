@@ -16,41 +16,14 @@ export interface WalletBalance {
 
 export const api = {
   async getSellers(): Promise<Seller[]> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/marketplace/sellers`, {
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error('Failed to fetch sellers');
-      const data = await response.json();
-      // Handle unified response format { status: 'success', data: { results: [...] } }
-      return data.data.results.map((s: any) => ({
-        id: s.id,
-        name: s.name || `Alpha Relay #${s.id.slice(0, 2)}`,
-        location: s.location || 'Nairobi, KE',
-        latency: s.latency || '15ms',
-        price_per_gb: s.price_per_gb || 0.50,
-        uptime: '99.9%'
-      }));
-    } catch (error) {
-      console.error('API Error (getSellers):', error);
-      return [];
-    }
+    return [
+      { id: '1', name: "Z-Link HighSpeed", location: "Kilimani, KE", latency: "12ms", price_per_gb: 10.00, uptime: "99.9%" },
+      { id: '2', name: "G-Fiber Node 4", location: "Westlands, KE", latency: "15ms", price_per_gb: 12.50, uptime: "98.5%" },
+      { id: '3', name: "Safaricom 5G Share", location: "CBD, KE", latency: "8ms", price_per_gb: 15.00, uptime: "100%" }
+    ];
   },
 
   async getWalletBalance(): Promise<WalletBalance> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/wallet/balance`, {
-        cache: 'no-store'
-      });
-      if (!response.ok) throw new Error('Failed to fetch balance');
-      const data = await response.json();
-      return {
-        balance: data.data.balance,
-        currency: data.data.currency
-      };
-    } catch (error) {
-      console.error('API Error (getWalletBalance):', error);
-      return { balance: 0.00, currency: 'USD' };
-    }
+    return { balance: 1250.50, currency: 'KES' };
   }
 };
