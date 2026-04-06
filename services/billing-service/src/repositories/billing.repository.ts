@@ -35,6 +35,14 @@ export class BillingRepository {
     );
     return result.rows;
   }
+
+  async getUserBalance(customerId: string): Promise<number> {
+    const result = await pool.query(
+      'SELECT balance_usd FROM billing.wallets WHERE customer_id = $1',
+      [customerId]
+    );
+    return result.rows[0]?.balance_usd ? parseFloat(result.rows[0].balance_usd) : 0.00;
+  }
 }
 
 export const billingRepository = new BillingRepository();

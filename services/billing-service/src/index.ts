@@ -1,99 +1,46 @@
-import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
 import { authMiddleware } from '@dravio/auth-middleware';
-import { GenerateInvoiceSchema } from './schema/billing.schema.js';
-import { billingService } from './services/billing.service.js';
-import { billingRepository } from './repositories/billing.repository.js';
-import { sendSuccess, sendError } from './utils/response.js';
 
+// New Architecture Routes
+import { sessionRoutes } from './api/routes/session.routes.js';
+import { usageRoutes } from './api/routes/usage.routes.js';
+import { walletRoutes } from './api/routes/wallet.routes.js';
+
+// Setup Base Server
 const fastify: FastifyInstance = Fastify({ 
-  logger: {
-    level: 'info'
-  } 
+  logger: { level: 'info' } 
 });
 
 async function init() {
   await fastify.register(cors);
+  
   await fastify.register(jwt, {
     secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
   });
-  await fastify.register(authMiddleware);
-}
-
-// Health check
-fastify.get('/health', async () => ({ status: 'ok', service: 'billing-service' }));
-
-// Generate invoice
-fastify.post('/v1/billing/invoices/generate', async (request: FastifyRequest, reply: FastifyReply) => {
-  const result = GenerateInvoiceSchema.safeParse(request.body);
-  if (!result.success) {
-    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
-  }
-
-  try {
-    const invoice = await billingService.generateInvoice(result.data);
-    if (!invoice) {
-        return sendSuccess(reply, { message: 'No new usage to invoice' });
-    }
-    return sendSuccess(reply, { invoice_id: invoice.id, amount_usd: invoice.amount_usd }, 201);
-  } catch (err: any) {
-    fastify.log.error(err);
-    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
-  }
-});
-
-// List invoices
-fastify.get('/v1/billing/invoices', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
-  const customerId = (request.user as any).sub;
   
-  try {
-    const invoices = await billingRepository.listInvoicesByCustomer(customerId);
-    return sendSuccess(reply, { invoices });
-  } catch (err: any) {
-    fastify.log.error(err);
-    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
-  }
-});
+  await fastify.register(authMiddleware);
 
-// Get balance
-fastify.get('/v1/billing/balance', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    return sendSuccess(reply, { balance_usd: 125.50 });
-  } catch (err: any) {
-    fastify.log.error(err);
-    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
-  }
-});
+  // Health check
+  fastify.get('/health', async () => ({ status: 'ok', service: 'billing-service', version: '2.0.0-centralized' }));
 
-// Top up wallet
-fastify.post('/v1/billing/topup', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
-  const { amount_usd } = request.body as any;
-  try {
-    return sendSuccess(reply, { success: true, new_balance_usd: 125.50 + amount_usd });
-  } catch (err: any) {
-    fastify.log.error(err);
-    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
-  }
-});
+  // Register modern modular routes
+  await fastify.register(sessionRoutes);
+  await fastify.register(usageRoutes);
+  await fastify.register(walletRoutes);
+}
 
 const start = async () => {
   try {
+    await init();
     const port = parseInt(process.env.PORT || '3006');
     await fastify.listen({ port, host: '0.0.0.0' });
-    console.log(`Billing service listening on port ${port}`);
+    fastify.log.info(`Billing Engine Core listening on port ${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 };
 
-async function bootstrap() {
-  await init();
-  await start();
-}
-
-bootstrap().catch(err => {
-  console.error('Fatal bootstrap error:', err);
-  process.exit(1);
-});
+start();

@@ -1,17 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useContext } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Colors } from '../theme/colors';
 import TunnelMonitor from '../components/TunnelMonitor';
 import { api } from '../services/api';
+import { AuthContext } from '../services/AuthContext';
+import { VpnManager } from '../services/vpnManager';
 
 export default function Marketplace() {
+  const { user } = useContext(AuthContext);
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSellers = async () => {
       try {
-        const data = await api.get<any>('/v1/marketplace/search?lat=0&lon=0');
+        const data = await api.get<any>('/marketplace/search?lat=0&lon=0');
         setSellers(data.results || []);
       } catch (err) {
         console.error('Failed to fetch sellers:', err);
@@ -21,6 +25,40 @@ export default function Marketplace() {
     };
     fetchSellers();
   }, []);
+
+  const handleConnect = async (seller: any) => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to start a session.');
+      return;
+    }
+
+    setConnectingId(seller.id);
+    try {
+      // 1. Request session from backend
+      const sessionData = await api.post<any>('/sessions', {
+        buyer_id: user.id,
+        seller_id: seller.id,
+        region: 'Africa' // Default for now
+      });
+
+      if (!sessionData.vpn_config) {
+        throw new Error('VPN configuration missing from response');
+      }
+
+      // 2. Connect VPN
+      const success = await VpnManager.connect(sessionData.vpn_config);
+      
+      if (success) {
+        Alert.alert('Connected!', `Successfully connected to ${seller.name || 'Relay Node'}.`);
+      } else {
+        throw new Error('VPN handshake failed');
+      }
+    } catch (err: any) {
+      Alert.alert('Connection Failed', err.message || 'Could not establish connection.');
+    } finally {
+      setConnectingId(null);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 40}}>
@@ -37,7 +75,7 @@ export default function Marketplace() {
         <ActivityIndicator color={Colors.primary} size="large" />
       ) : (
         sellers.map(s => (
-          <TouchableOpacity key={s.id} style={styles.card}>
+          <TouchableOpacity key={s.id} style={styles.card} onPress={() => handleConnect(s)}>
             <View style={styles.cardHeader}>
               <View style={styles.relayIcon} />
               <View>
@@ -47,8 +85,16 @@ export default function Marketplace() {
             </View>
             <View style={styles.cardPrice}>
               <Text style={styles.priceText}>${s.price_per_gb?.toFixed(2) || '0.50'}/GB</Text>
-              <TouchableOpacity style={styles.buyBtn}>
-                <Text style={styles.buyBtnText}>BUY</Text>
+              <TouchableOpacity 
+                style={[styles.buyBtn, connectingId === s.id && { opacity: 0.7 }]}
+                disabled={connectingId !== null}
+                onPress={() => handleConnect(s)}
+              >
+                {connectingId === s.id ? (
+                  <ActivityIndicator color="#000" size="small" />
+                ) : (
+                  <Text style={styles.buyBtnText}>BUY</Text>
+                )}
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -62,6 +108,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
+    backgroundColor: Colors.background,
   },
   hero: {
     marginBottom: 32,

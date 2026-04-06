@@ -9,8 +9,11 @@
     "build": "tsc"
   },
   "devDependencies": {
-    "fastify": "^4.26.2",
     "@fastify/jwt": "^8.0.0",
+    "fastify": "^4.26.2",
     "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "fastify-plugin": "^4.5.1"
   }
 }

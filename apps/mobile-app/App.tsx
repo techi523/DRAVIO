@@ -1,91 +1,106 @@
-import React from 'react';
-import { StyleSheet, View, Text, StatusBar, SafeAreaView } from 'react-native';
+import React, { useContext } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { AuthProvider, AuthContext } from './src/services/AuthContext';
 import { Colors } from './src/theme/colors';
-import Marketplace from './src/screens/Marketplace';
 
-export default function App() {
+// Screens
+import Login from './src/screens/Login';
+import Register from './src/screens/Register';
+import Marketplace from './src/screens/Marketplace';
+import Wallet from './src/screens/Wallet';
+import Relay from './src/screens/Relay';
+import Profile from './src/screens/Profile';
+
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Bottom Tab Navigator for Main App Flow
+function MainTabs() {
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.header}>
-        <Text style={styles.logo}>DRAVIO</Text>
-        <View style={styles.statusBadge}>
-          <View style={styles.dot} />
-          <Text style={styles.statusText}>SECURE_TUNNEL</Text>
-        </View>
-      </View>
-      
-      <Marketplace />
-      
-      <View style={styles.navBar}>
-        <Text style={[styles.navItem, {color: Colors.primary}]}>MARKET</Text>
-        <Text style={styles.navItem}>WALLET</Text>
-        <Text style={styles.navItem}>RELAY</Text>
-        <Text style={styles.navItem}>PROFILE</Text>
-      </View>
-    </SafeAreaView>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: Colors.surfaceLow,
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(255,255,255,0.05)',
+          height: 80,
+          paddingBottom: 20,
+        },
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '900',
+        }
+      }}
+    >
+      <Tab.Screen name="Market" component={Marketplace} />
+      <Tab.Screen name="Wallet" component={Wallet} />
+      <Tab.Screen name="Relay" component={Relay} />
+      <Tab.Screen name="Profile" component={Profile} />
+    </Tab.Navigator>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+// Authentication Stack
+function AuthStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="Register" component={Register} />
+    </Stack.Navigator>
+  );
+}
+
+// Custom Dark Theme for React Navigation
+const MyTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: Colors.primary,
+    background: Colors.background,
+    card: Colors.surfaceLow,
+    text: Colors.foreground,
+    border: 'rgba(255,255,255,0.05)',
+    notification: Colors.danger,
   },
-  header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+  fonts: {
+    ...DarkTheme.fonts,
+    regular: { fontFamily: 'sans-serif', fontWeight: 'normal' as const },
+    medium: { fontFamily: 'sans-serif-medium', fontWeight: '500' as const },
+    bold: { fontFamily: 'sans-serif', fontWeight: 'bold' as const },
+    heavy: { fontFamily: 'sans-serif', fontWeight: '900' as const },
   },
-  logo: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: Colors.primary,
-    letterSpacing: -1,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,242,255,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(0,242,255,0.3)',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-    marginRight: 6,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  statusText: {
-    color: Colors.primary,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  navBar: {
-    height: 80,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: Colors.surfaceLow,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-  },
-  navItem: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: Colors.textMuted,
+};
+
+// Main Navigation Wrapper connecting to Auth Context
+function Navigator() {
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
   }
-});
+
+  return (
+    <NavigationContainer theme={MyTheme}>
+      {user ? <MainTabs /> : <AuthStack />}
+    </NavigationContainer>
+  );
+}
+
+// Root App Component
+export default function App() {
+  return (
+    <AuthProvider>
+      <Navigator />
+    </AuthProvider>
+  );
+}

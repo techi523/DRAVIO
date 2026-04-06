@@ -9,8 +9,8 @@ export const HeartbeatSchema = z.object({
 export type HeartbeatInput = z.infer<typeof HeartbeatSchema>;
 
 export const SearchSchema = z.object({
-  lat: z.number().min(-90).max(90),
-  lon: z.number().min(-180).max(180),
+  lat: z.coerce.number().min(-90).max(90),
+  lon: z.coerce.number().min(-180).max(180),
   radius: z.coerce.number().positive().default(5),
   unit: z.enum(['km', 'm', 'mi', 'ft']).default('km'),
 });

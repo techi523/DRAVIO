@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import "@fastify/jwt";
+import fp from 'fastify-plugin';
 
-export const authMiddleware = async (fastify: FastifyInstance) => {
+export const authMiddleware = fp(async (fastify: FastifyInstance) => {
   fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await request.jwtVerify();
@@ -26,7 +27,7 @@ export const authMiddleware = async (fastify: FastifyInstance) => {
       }
     };
   });
-};
+});
 
 declare module 'fastify' {
   export interface FastifyInstance {
