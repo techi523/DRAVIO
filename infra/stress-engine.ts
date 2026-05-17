@@ -88,6 +88,7 @@ class SREStressEngine {
         const concurrentDebits = 100;
         console.log(`Simulating ${concurrentDebits} simultaneous wallet debits on concurrent consumer transactions...`);
 
+        this.resetMetrics();
         const start = performance.now();
         let balance = 1000.00;
         let successfulDeductions = 0;

@@ -47,11 +47,27 @@ async function build() {
 
   // ── HTTP Proxy routes ──────────────────────────────────────────────────────
 
+  // ── High-Performance Connection Pooling & HTTP Keep-Alive configuration ──
+  const proxyConfig = {
+    http: {
+      agentOptions: {
+        keepAlive: true,
+        keepAliveMsecs: 60000,
+        maxSockets: 256,
+        maxFreeSockets: 64
+      },
+      requestOptions: {
+        timeout: 10000
+      }
+    }
+  };
+
   // Auth  (3000)
   fastify.register(proxy, {
     upstream: SERVICES.auth,
     prefix: '/v1/auth',
     rewritePrefix: '/v1/auth',
+    ...proxyConfig
   });
 
   // Users  (3002)
@@ -59,6 +75,7 @@ async function build() {
     upstream: SERVICES.user,
     prefix: '/v1/users',
     rewritePrefix: '/v1/users',
+    ...proxyConfig
   });
 
   // Marketplace  (3000)
@@ -66,6 +83,7 @@ async function build() {
     upstream: SERVICES.marketplace,
     prefix: '/v1/marketplace',
     rewritePrefix: '/v1/marketplace',
+    ...proxyConfig
   });
 
   // Sessions  (3005)
@@ -73,6 +91,7 @@ async function build() {
     upstream: SERVICES.session,
     prefix: '/v1/sessions',
     rewritePrefix: '/v1/sessions',
+    ...proxyConfig
   });
 
   // Payments  (3005)
@@ -80,6 +99,7 @@ async function build() {
     upstream: SERVICES.payment,
     prefix: '/v1/payments',
     rewritePrefix: '/v1/payments',
+    ...proxyConfig
   });
 
   // Billing  (3006) – primary
@@ -87,6 +107,7 @@ async function build() {
     upstream: SERVICES.billing,
     prefix: '/v1/billing',
     rewritePrefix: '/v1/billing',
+    ...proxyConfig
   });
 
   // Billing alias – mobile /wallet screen
@@ -94,6 +115,7 @@ async function build() {
     upstream: SERVICES.billing,
     prefix: '/v1/wallet',
     rewritePrefix: '/v1/billing',
+    ...proxyConfig
   });
 
   // ISP  (8080)
@@ -101,6 +123,7 @@ async function build() {
     upstream: SERVICES.isp,
     prefix: '/v1/isp',
     rewritePrefix: '/v1/isp',
+    ...proxyConfig
   });
 }
 
