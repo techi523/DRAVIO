@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { authMiddleware } from '@dravio/auth-middleware';
 import { CreateProfileSchema } from './schema/user.schema.js';
 import { userRepository } from './repositories/user.repository.js';
@@ -24,6 +25,19 @@ const fastify: FastifyInstance = Fastify({
 
 async function init() {
   await fastify.register(cors);
+
+  // Security: Global rate limiting + strict limits on write/update endpoints
+  await fastify.register(rateLimit, {
+    global: true,
+    max: 150,
+    timeWindow: '1 minute',
+    errorResponseBuilder: (_req, context) => ({
+      statusCode: 429,
+      error: 'TOO_MANY_REQUESTS',
+      message: `Rate limit exceeded. Try again in ${context.after}.`
+    })
+  });
+
   await fastify.register(jwt, {
     secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
   });
@@ -64,6 +78,26 @@ fastify.get('/v1/users/me', { preHandler: [(req, reply) => fastify.authenticate(
     return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
   }
 });
+
+// Update self profile
+fastify.put('/v1/users/me', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  const authUserId = (request.user as any).sub;
+  const updates = request.body as any;
+
+  try {
+    const profile = await userRepository.findByAuthId(authUserId);
+    if (!profile) {
+      return sendError(reply, 'PROFILE_NOT_FOUND', 404);
+    }
+
+    const updatedProfile = await userRepository.update(profile.id, updates);
+    return sendSuccess(reply, { profile: updatedProfile });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
 
 const start = async () => {
   try {

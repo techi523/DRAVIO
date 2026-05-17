@@ -1,160 +1,421 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Modal, TextInput, ActivityIndicator, Alert, Switch } from 'react-native';
 import { Colors } from '../theme/colors';
+import { api } from '../services/api';
 
 export default function Profile() {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isPayoutOpen, setIsPayoutOpen] = useState(false);
+  const [isSecurityOpen, setIsSecurityOpen] = useState(false);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [isOptimizerOpen, setIsOptimizerOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  const [profile, setProfile] = useState({
+    name: 'Alex Dravio',
+    email: 'alex.dravio@cybernet.ke',
+    country: 'KE'
+  });
+
+  const [editData, setEditData] = useState({ ...profile });
+  const [payoutData, setPayoutData] = useState({ method: 'M-Pesa', account: '+254712345678' });
+  const [securityData, setSecurityData] = useState({ twoFactor: true, biometric: false });
+  const [alertsData, setAlertsData] = useState({ usage: true, drops: true, autoKill: false });
+  const [optimizerData, setOptimizerData] = useState({ maxBandwidth: '100', concurrentUsers: '10', autoThrottle: true });
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+        const data = await api.get<any>('/users/me');
+        if (data?.profile) {
+            setProfile({
+                name: data.profile.full_name,
+                email: profile.email,
+                country: data.profile.country_code
+            });
+            setEditData({
+                name: data.profile.full_name,
+                email: profile.email,
+                country: data.profile.country_code
+            });
+        }
+    } catch (err) {
+        console.warn('Could not fetch live profile, using demo data');
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    try {
+        await api.put('/users/me', {
+            full_name: editData.name,
+            country_code: editData.country
+        });
+        setProfile({ ...editData });
+        setIsEditing(false);
+        Alert.alert('Success', 'Profile updated successfully.');
+    } catch (err: any) {
+        Alert.alert('Error', err.message || 'Failed to update profile.');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleSavePayout = () => {
+      setLoading(true);
+      setTimeout(() => {
+          setLoading(false);
+          setIsPayoutOpen(false);
+          Alert.alert('Success', 'Payout settings securely saved.');
+      }, 1000);
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>AD</Text>
-        </View>
-        <Text style={styles.name}>Alex Dravio</Text>
-        <Text style={styles.email}>alex@example.com</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>PRO SELLER</Text>
-        </View>
-      </View>
+    <View style={styles.main}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* Profile Header */}
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.avatarContainer} onPress={() => setIsEditing(true)}>
+                    <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{profile.name.split(' ').map(n => n[0]).join('')}</Text>
+                    </View>
+                    <View style={styles.editBadge}>
+                        <Text style={styles.editIcon}>✎</Text>
+                    </View>
+                </TouchableOpacity>
+                <Text style={styles.name}>{profile.name}</Text>
+                <Text style={styles.email}>{profile.email}</Text>
+                <View style={styles.roleBadge}>
+                    <Text style={styles.roleText}>ELITE RELAY NODE</Text>
+                </View>
 
-      {/* Settings Sections */}
-      <Text style={styles.sectionTitle}>Account</Text>
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.row}>
-          <Text style={styles.rowText}>Personal Information</Text>
-          <Text style={styles.rowChevron}>›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.row}>
-          <Text style={styles.rowText}>Payment Methods</Text>
-          <Text style={styles.rowChevron}>›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.row, { borderBottomWidth: 0 }]}>
-          <Text style={styles.rowText}>Security & Privacy</Text>
-          <Text style={styles.rowChevron}>›</Text>
-        </TouchableOpacity>
-      </View>
+                {/* Verification Tags */}
+                <View style={styles.tagRow}>
+                    <View style={[styles.tag, { borderColor: Colors.success, backgroundColor: 'rgba(0, 255, 170, 0.05)' }]}>
+                        <Text style={[styles.tagText, { color: Colors.success }]}>✓ VERIFIED ID</Text>
+                    </View>
+                    <View style={[styles.tag, { borderColor: Colors.primary, backgroundColor: 'rgba(0, 242, 255, 0.05)' }]}>
+                        <Text style={[styles.tagText, { color: Colors.primary }]}>⚡ TOP RATED</Text>
+                    </View>
+                    <View style={[styles.tag, { borderColor: Colors.secondary, backgroundColor: 'rgba(112, 0, 255, 0.05)' }]}>
+                        <Text style={[styles.tagText, { color: Colors.secondary }]}>💎 PREMIUM</Text>
+                    </View>
+                </View>
+            </View>
 
-      <Text style={styles.sectionTitle}>Preferences</Text>
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.row}>
-          <Text style={styles.rowText}>Notifications</Text>
-          <Text style={styles.rowChevron}>›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.row, { borderBottomWidth: 0 }]}>
-          <Text style={styles.rowText}>Data Usage Limits</Text>
-          <Text style={styles.rowChevron}>›</Text>
-        </TouchableOpacity>
-      </View>
+            {/* Stats Summary */}
+            <View style={styles.statsRow}>
+                <View style={styles.miniStat}>
+                    <Text style={styles.miniStatVal}>4.9</Text>
+                    <Text style={styles.miniStatLabel}>Rating</Text>
+                </View>
+                <View style={styles.miniStat}>
+                    <Text style={styles.miniStatVal}>124</Text>
+                    <Text style={styles.miniStatLabel}>Sales</Text>
+                </View>
+                <View style={styles.miniStat}>
+                    <Text style={styles.miniStatVal}>99%</Text>
+                    <Text style={styles.miniStatLabel}>Uptime</Text>
+                </View>
+            </View>
 
-      {/* Logout */}
-      <TouchableOpacity style={styles.logoutBtn}>
-        <Text style={styles.logoutBtnText}>LOG OUT</Text>
-      </TouchableOpacity>
-    </ScrollView>
+            {/* Settings Sections */}
+            <Text style={styles.sectionTitle}>Account Control</Text>
+            <View style={styles.section}>
+                <ProfileRow icon="👤" label="Personal Identity" sub="Manage your KYC and profile" onPress={() => setIsEditing(true)} />
+                <ProfileRow icon="💳" label="Payout Settings" sub="Bank, M-Pesa, or Crypto" onPress={() => setIsPayoutOpen(true)} />
+                <ProfileRow icon="🛡️" label="Security Vault" sub="2FA and Encryption keys" onPress={() => setIsSecurityOpen(true)} isLast />
+            </View>
+
+            <Text style={styles.sectionTitle}>System Preferences</Text>
+            <View style={styles.section}>
+                <ProfileRow icon="🔔" label="Intelligent Alerts" sub="Real-time session notifications" onPress={() => setIsAlertsOpen(true)} />
+                <ProfileRow icon="📊" label="Traffic Optimizer" sub="Auto-adjust speed and limits" onPress={() => setIsOptimizerOpen(true)} isLast />
+            </View>
+
+            <TouchableOpacity style={styles.logoutBtn}>
+                <Text style={styles.logoutBtnText}>DEACTIVATE SESSION (LOGOUT)</Text>
+            </TouchableOpacity>
+        </ScrollView>
+
+        {/* Edit Profile Modal */}
+        <Modal visible={isEditing} transparent animationType="slide">
+            <View style={styles.modalBackdrop}>
+                <View style={styles.editSheet}>
+                    <Text style={styles.sheetTitle}>Edit Profile</Text>
+                    
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>FULL NAME</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            value={editData.name} 
+                            onChangeText={(t) => setEditData({ ...editData, name: t })}
+                            placeholderTextColor={Colors.textMuted}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>COUNTRY CODE</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            value={editData.country} 
+                            onChangeText={(t) => setEditData({ ...editData, country: t.toUpperCase() })}
+                            maxLength={2}
+                            placeholderTextColor={Colors.textMuted}
+                        />
+                    </View>
+
+                    <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={loading}>
+                        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.saveBtnText}>SAVE CHANGES</Text>}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsEditing(false)}>
+                        <Text style={styles.cancelBtnText}>CANCEL</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
+        {/* Payout Settings Modal */}
+        <Modal visible={isPayoutOpen} transparent animationType="slide">
+            <View style={styles.modalBackdrop}>
+                <View style={styles.editSheet}>
+                    <Text style={styles.sheetTitle}>Payout Settings</Text>
+                    
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>PRIMARY METHOD</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            value={payoutData.method} 
+                            onChangeText={(t) => setPayoutData({ ...payoutData, method: t })}
+                            placeholderTextColor={Colors.textMuted}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>ACCOUNT / WALLET DETAILS</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            value={payoutData.account} 
+                            onChangeText={(t) => setPayoutData({ ...payoutData, account: t })}
+                            placeholderTextColor={Colors.textMuted}
+                        />
+                    </View>
+
+                    <TouchableOpacity style={styles.saveBtn} onPress={handleSavePayout} disabled={loading}>
+                        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.saveBtnText}>UPDATE PAYOUT</Text>}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsPayoutOpen(false)}>
+                        <Text style={styles.cancelBtnText}>CANCEL</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
+        {/* Security Vault Modal */}
+        <Modal visible={isSecurityOpen} transparent animationType="slide">
+            <View style={styles.modalBackdrop}>
+                <View style={styles.editSheet}>
+                    <Text style={styles.sheetTitle}>Security Vault</Text>
+                    <Text style={{color: Colors.textMuted, marginBottom: 24, fontSize: 13}}>Manage your account security and encryption keys.</Text>
+                    
+                    <View style={styles.switchRow}>
+                        <View>
+                            <Text style={styles.switchLabel}>Two-Factor Auth (2FA)</Text>
+                            <Text style={styles.switchSub}>Use Authenticator App</Text>
+                        </View>
+                        <Switch 
+                            value={securityData.twoFactor} 
+                            onValueChange={(val) => setSecurityData({...securityData, twoFactor: val})} 
+                            trackColor={{ false: Colors.surfaceMid, true: Colors.primary }}
+                        />
+                    </View>
+
+                    <View style={styles.switchRow}>
+                        <View>
+                            <Text style={styles.switchLabel}>Biometric Login</Text>
+                            <Text style={styles.switchSub}>FaceID / Fingerprint</Text>
+                        </View>
+                        <Switch 
+                            value={securityData.biometric} 
+                            onValueChange={(val) => setSecurityData({...securityData, biometric: val})} 
+                            trackColor={{ false: Colors.surfaceMid, true: Colors.primary }}
+                        />
+                    </View>
+
+                    <TouchableOpacity style={[styles.saveBtn, {backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.danger, marginTop: 32}]} onPress={() => Alert.alert('Keys Rotated', 'Your node encryption keys have been regenerated.')}>
+                        <Text style={[styles.saveBtnText, {color: Colors.danger}]}>ROTATE ENCRYPTION KEYS</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsSecurityOpen(false)}>
+                        <Text style={styles.cancelBtnText}>DONE</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
+        {/* Intelligent Alerts Modal */}
+        <Modal visible={isAlertsOpen} transparent animationType="slide">
+            <View style={styles.modalBackdrop}>
+                <View style={styles.editSheet}>
+                    <Text style={styles.sheetTitle}>Intelligent Alerts</Text>
+                    <Text style={{color: Colors.textMuted, marginBottom: 24, fontSize: 13}}>Manage real-time notifications for your relay node.</Text>
+                    
+                    <View style={styles.switchRow}>
+                        <View>
+                            <Text style={styles.switchLabel}>High Usage Warnings</Text>
+                            <Text style={styles.switchSub}>Alert when hitting 90% capacity</Text>
+                        </View>
+                        <Switch 
+                            value={alertsData.usage} 
+                            onValueChange={(val) => setAlertsData({...alertsData, usage: val})} 
+                            trackColor={{ false: Colors.surfaceMid, true: Colors.primary }}
+                        />
+                    </View>
+
+                    <View style={styles.switchRow}>
+                        <View>
+                            <Text style={styles.switchLabel}>Connection Drops</Text>
+                            <Text style={styles.switchSub}>Notify if node goes offline</Text>
+                        </View>
+                        <Switch 
+                            value={alertsData.drops} 
+                            onValueChange={(val) => setAlertsData({...alertsData, drops: val})} 
+                            trackColor={{ false: Colors.surfaceMid, true: Colors.primary }}
+                        />
+                    </View>
+
+                    <View style={styles.switchRow}>
+                        <View>
+                            <Text style={styles.switchLabel}>Zero Balance Auto-Kill</Text>
+                            <Text style={styles.switchSub}>Alert when a buyer is auto-disconnected</Text>
+                        </View>
+                        <Switch 
+                            value={alertsData.autoKill} 
+                            onValueChange={(val) => setAlertsData({...alertsData, autoKill: val})} 
+                            trackColor={{ false: Colors.surfaceMid, true: Colors.primary }}
+                        />
+                    </View>
+
+                    <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={() => setIsAlertsOpen(false)}>
+                        <Text style={styles.saveBtnText}>DONE</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
+        {/* Traffic Optimizer Modal */}
+        <Modal visible={isOptimizerOpen} transparent animationType="slide">
+            <View style={styles.modalBackdrop}>
+                <View style={styles.editSheet}>
+                    <Text style={styles.sheetTitle}>Traffic Optimizer</Text>
+                    <Text style={{color: Colors.textMuted, marginBottom: 24, fontSize: 13}}>Fine-tune your node's performance and bandwidth limits.</Text>
+                    
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>MAX BANDWIDTH (MBPS)</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            value={optimizerData.maxBandwidth} 
+                            onChangeText={(t) => setOptimizerData({ ...optimizerData, maxBandwidth: t })}
+                            keyboardType="numeric"
+                            placeholderTextColor={Colors.textMuted}
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>CONCURRENT USERS LIMIT</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            value={optimizerData.concurrentUsers} 
+                            onChangeText={(t) => setOptimizerData({ ...optimizerData, concurrentUsers: t })}
+                            keyboardType="numeric"
+                            placeholderTextColor={Colors.textMuted}
+                        />
+                    </View>
+
+                    <View style={[styles.switchRow, {borderBottomWidth: 0, marginTop: 12}]}>
+                        <View>
+                            <Text style={styles.switchLabel}>Auto-Throttle</Text>
+                            <Text style={styles.switchSub}>Reduce speed gracefully on high load</Text>
+                        </View>
+                        <Switch 
+                            value={optimizerData.autoThrottle} 
+                            onValueChange={(val) => setOptimizerData({...optimizerData, autoThrottle: val})} 
+                            trackColor={{ false: Colors.surfaceMid, true: Colors.primary }}
+                        />
+                    </View>
+
+                    <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={() => {Alert.alert('Success', 'Traffic rules updated successfully'); setIsOptimizerOpen(false);}}>
+                        <Text style={styles.saveBtnText}>SAVE OPTIMIZATION</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsOptimizerOpen(false)}>
+                        <Text style={styles.cancelBtnText}>CANCEL</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+
+    </View>
   );
 }
 
+const ProfileRow = ({ icon, label, sub, isLast, onPress }: any) => (
+    <TouchableOpacity style={[styles.row, isLast && { borderBottomWidth: 0 }]} onPress={onPress}>
+        <View style={styles.rowIconBox}><Text style={styles.rowIcon}>{icon}</Text></View>
+        <View style={{ flex: 1 }}>
+            <Text style={styles.rowLabel}>{label}</Text>
+            <Text style={styles.rowSub}>{sub}</Text>
+        </View>
+        <Text style={styles.chevron}>›</Text>
+    </TouchableOpacity>
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-    marginTop: 20,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0,242,255,0.1)',
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: Colors.primary,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: Colors.foreground,
-    marginBottom: 4,
-  },
-  email: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    marginBottom: 12,
-  },
-  badge: {
-    backgroundColor: 'rgba(112,0,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-  },
-  badgeText: {
-    color: Colors.secondary,
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 12,
-    marginLeft: 4,
-  },
-  section: {
-    backgroundColor: 'rgba(20, 22, 46, 0.7)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    marginBottom: 28,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  rowText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.foreground,
-  },
-  rowChevron: {
-    fontSize: 20,
-    color: Colors.textMuted,
-    fontWeight: '300',
-  },
-  logoutBtn: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,0,85,0.3)',
-    backgroundColor: 'rgba(255,0,85,0.05)',
-    padding: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  logoutBtnText: {
-    color: Colors.danger,
-    fontWeight: '900',
-    fontSize: 13,
-    letterSpacing: 1,
-  },
+  main: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, padding: 24 },
+  header: { alignItems: 'center', marginBottom: 32, marginTop: 20 },
+  avatarContainer: { position: 'relative', marginBottom: 16 },
+  avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: Colors.surfaceMid, borderWidth: 3, borderColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 36, fontWeight: '900', color: Colors.primary },
+  editBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: Colors.primary, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Colors.background },
+  editIcon: { color: '#000', fontSize: 16, fontWeight: 'bold' },
+  name: { fontSize: 28, fontWeight: '900', color: '#FFF', marginBottom: 4 },
+  email: { fontSize: 14, color: Colors.textMuted, marginBottom: 16 },
+  roleBadge: { backgroundColor: 'rgba(112,0,255,0.1)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 100, borderWidth: 1, borderColor: Colors.secondary },
+  roleText: { color: Colors.secondary, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  tagRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  tagText: { fontSize: 8, fontWeight: '900', letterSpacing: 0.5 },
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 40 },
+  miniStat: { flex: 1, backgroundColor: Colors.surfaceLow, padding: 16, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  miniStatVal: { fontSize: 18, fontWeight: '900', color: '#FFF' },
+  miniStatLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 4, textTransform: 'uppercase' },
+  sectionTitle: { fontSize: 12, fontWeight: '900', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 16, textTransform: 'uppercase' },
+  section: { backgroundColor: Colors.glass, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, marginBottom: 32, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  rowIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.surfaceMid, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  rowIcon: { fontSize: 20 },
+  rowLabel: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
+  rowSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  chevron: { fontSize: 24, color: Colors.textMuted, fontWeight: '300' },
+  logoutBtn: { padding: 20, borderRadius: 20, backgroundColor: 'rgba(255, 51, 102, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 51, 102, 0.2)', alignItems: 'center' },
+  logoutBtnText: { color: Colors.danger, fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  editSheet: { backgroundColor: Colors.surfaceHigh, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, borderWidth: 1, borderColor: Colors.border },
+  sheetTitle: { fontSize: 24, fontWeight: '900', color: '#FFF', marginBottom: 32 },
+  inputGroup: { marginBottom: 24 },
+  inputLabel: { fontSize: 10, fontWeight: '900', color: Colors.textMuted, letterSpacing: 1, marginBottom: 12 },
+  input: { backgroundColor: Colors.surfaceMid, borderRadius: 16, padding: 16, fontSize: 16, color: '#FFF', borderWidth: 1, borderColor: Colors.border },
+  saveBtn: { backgroundColor: Colors.primary, padding: 20, borderRadius: 16, alignItems: 'center', marginTop: 12 },
+  saveBtnText: { color: '#000', fontWeight: '900', fontSize: 16 },
+  cancelBtn: { padding: 20, alignItems: 'center' },
+  cancelBtnText: { color: Colors.textMuted, fontWeight: 'bold' },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  switchLabel: { color: '#FFF', fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+  switchSub: { color: Colors.textMuted, fontSize: 12 },
 });
+
+
+

@@ -13,7 +13,24 @@ const consumer = kafka.consumer({ groupId: 'billing-group' });
 const PRICE_PER_MB = 0.01;
 
 export async function startConsumptionProcessor() {
-  await consumer.connect();
+  let connected = false;
+  let retries = 10;
+  while (!connected && retries > 0) {
+    try {
+      console.log(`[Billing Consumer] Connecting to Kafka... (${retries} attempts remaining)`);
+      await consumer.connect();
+      connected = true;
+      console.log("[Billing Consumer] Successfully connected to Kafka!");
+    } catch (err) {
+      retries--;
+      if (retries === 0) {
+        throw new Error(`Failed to connect to Kafka after multiple retries: ${err}`);
+      }
+      console.log(`[Billing Consumer] Kafka connection failed, retrying in 5 seconds...`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+
   await consumer.subscribe({ topic: 'dm.metering.update', fromBeginning: false });
 
   await consumer.run({

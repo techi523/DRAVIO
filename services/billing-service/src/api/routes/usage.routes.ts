@@ -2,22 +2,23 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { byteTrackerEngine } from '../../core/engines/byte-tracker.js';
 
 export async function usageRoutes(fastify: FastifyInstance) {
-  // Usage updates usually come from secure hardware layers. 
-  // We can lock this down further with a specific role check if desired.
-  fastify.post('/v1/billing/usage/update', { 
+  fastify.post('/v1/billing/usage', { 
     preHandler: [fastify.authenticate] 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { sessionToken, bytesUsed } = request.body as any;
+    const { sessionId, dataUsedMb } = request.body as any;
 
     try {
-      // Async process to avoid blocking the fast hardware ingestion
-      // In production, this might push directly to Kafka instead of processing inline.
-      await byteTrackerEngine.processUsageUpdate(sessionToken, BigInt(bytesUsed));
+      // Convert MB back to bytes for the internal engine if needed, 
+      // or update engine to handle MB. Assuming bytes for consistency.
+      const bytes = BigInt(Math.floor(dataUsedMb * 1024 * 1024));
       
-      return reply.send({ success: true, message: 'Usage processed successfully' });
+      await byteTrackerEngine.processUsageUpdate(sessionId, bytes);
+      
+      return reply.send({ success: true });
     } catch (err: any) {
       fastify.log.error(err);
       return reply.status(500).send({ success: false, error: 'INTERNAL_SERVER_ERROR' });
     }
   });
 }
+

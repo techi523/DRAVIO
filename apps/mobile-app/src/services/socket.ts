@@ -1,33 +1,51 @@
+import { NativeModules, Platform } from 'react-native';
 import io, { type Socket } from 'socket.io-client';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from './storage';
+
+const resolveWsUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_WS_URL;
+  if (envUrl) return envUrl;
+
+  if (__DEV__ && Platform.OS !== 'web') {
+    const scriptURL = NativeModules.SourceCode?.scriptURL || '';
+    const match = scriptURL.match(/http:\/\/([\d.]+):/);
+    if (match?.[1]) return `http://${match[1]}:8080`;
+  }
+
+  if (__DEV__) return 'http://localhost:8080';
+
+  throw new Error('[DRAVIO] EXPO_PUBLIC_WS_URL is not configured.');
+};
+
+const WS_URL = resolveWsUrl();
 
 let socket: Socket | null = null;
-const SOCKET_URL = 'http://192.168.1.118:8080'; // Should match API_BASE_URL
 
 export const getSocket = async (): Promise<Socket> => {
   if (socket?.connected) return socket;
 
-  const token = await SecureStore.getItemAsync('dravio_token');
+  const token = await storage.getItem('dravio_token');
 
-  socket = io(SOCKET_URL, {
-    auth: {
-      token: token,
-    },
+  socket = io(WS_URL, {
+    auth: { token },
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000,
+    timeout: 10000,
+    transports: ['websocket'],
   });
 
   socket.on('connect', () => {
-    console.log('Connected to WebSocket Gateway');
+    console.log('[DRAVIO] WebSocket connected');
   });
 
   socket.on('connect_error', (error: any) => {
-    console.error('Socket connection error:', error.message);
+    if (__DEV__) console.warn('[DRAVIO] Socket error:', error.message);
   });
 
   socket.on('disconnect', (reason: any) => {
-    console.log('Disconnected from WebSocket:', reason);
+    if (__DEV__) console.log('[DRAVIO] Socket disconnected:', reason);
   });
 
   return socket;
@@ -40,18 +58,14 @@ export const disconnectSocket = () => {
   }
 };
 
-// Event helper
 export const onEvent = async (event: string, callback: (data: any) => void) => {
   const s = await getSocket();
   s.on(event, callback);
   return () => s.off(event, callback);
 };
 
-// Common events
-export const subscribeToEarnings = (callback: (data: { total: number }) => void) => {
-  return onEvent('earnings_update', callback);
-};
+export const subscribeToEarnings = (callback: (data: { total: number }) => void) =>
+  onEvent('earnings_update', callback);
 
-export const subscribeToBillingAlerts = (callback: (data: { type: string, message: string }) => void) => {
-  return onEvent('billing_alert', callback);
-};
+export const subscribeToBillingAlerts = (callback: (data: { type: string; message: string }) => void) =>
+  onEvent('billing_alert', callback);

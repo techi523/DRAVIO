@@ -165,28 +165,42 @@ const start = async () => {
       pingInterval: 25000,
     });
 
-    io.on('connection', (socket) => {
-      fastify.log.info(`[gateway] client connected: ${socket.id}`);
-
-      // Optional JWT auth from handshake
+    // Mandatory JWT Authentication Middleware for WebSockets
+    io.use((socket, next) => {
       const token = socket.handshake.auth?.token as string | undefined;
-      if (token) {
-        try {
-          fastify.jwt.verify(token);
-          fastify.log.info(`[gateway] ${socket.id} authenticated via JWT`);
-        } catch {
-          fastify.log.warn(`[gateway] ${socket.id} – bad token, continuing unauthenticated`);
-        }
+      if (!token) {
+        return next(new Error('AUTHENTICATION_FAILED: Missing token'));
       }
 
-      // Allow mobile clients to subscribe to a per-user room
+      try {
+        const decoded = fastify.jwt.verify(token) as { sub: string };
+        (socket as any).userId = decoded.sub;
+        fastify.log.info(`[gateway] Socket ${socket.id} authenticated for user ${(socket as any).userId}`);
+        next();
+      } catch (err) {
+        fastify.log.warn(`[gateway] Socket ${socket.id} authentication failed: ${err}`);
+        next(new Error('AUTHENTICATION_FAILED: Invalid token'));
+      }
+    });
+
+    io.on('connection', (socket) => {
+      const userId = (socket as any).userId;
+      fastify.log.info(`[gateway] client connected: ${socket.id} (user: ${userId})`);
+
+      // Secure room subscription: Users can only join their own room or global rooms
       socket.on('join_room', (room: string) => {
-        socket.join(room);
-        fastify.log.info(`[gateway] ${socket.id} joined room: ${room}`);
+        // Enforce that a user can only join their own room
+        if (room === userId || room === 'global_announcements') {
+          socket.join(room);
+          fastify.log.info(`[gateway] ${socket.id} joined secure room: ${room}`);
+        } else {
+          fastify.log.warn(`[gateway] ${socket.id} attempted to join unauthorized room: ${room}`);
+          socket.emit('error', { message: 'UNAUTHORIZED_ROOM_ACCESS' });
+        }
       });
 
       socket.on('disconnect', (reason) => {
-        fastify.log.info(`[gateway] client disconnected: ${socket.id} – ${reason}`);
+        fastify.log.info(`[gateway] client disconnected: ${socket.id} (user: ${userId}) – ${reason}`);
       });
     });
 

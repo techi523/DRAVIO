@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+  DRAVIO Network Security Configuration
+  Enforces HTTPS-only communication in production builds.
+  No plaintext HTTP traffic is permitted.
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+  <!-- Allow cleartext only for local development (removed in release builds) -->
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">dravio.app</domain>
+  </domain-config>
+</network-security-config>

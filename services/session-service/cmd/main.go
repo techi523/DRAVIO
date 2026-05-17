@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/dravio/session-service/internal/orchestrator"
@@ -15,10 +16,21 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+type Session struct {
+	SessionID string    `json:"session_id"`
+	BuyerID   string    `json:"buyer_id"`
+	SellerID  string    `json:"seller_id"`
+	Status    string    `json:"status"`
+	StartTime time.Time `json:"start_time"`
+	RelayID   string    `json:"relay_id"`
+}
+
 var (
 	kafkaWriter  *kafka.Writer
 	relayManager *orchestrator.RelayManager
 	handoffMgr   *orchestrator.HandoffManager
+	sessionsMu   sync.RWMutex
+	sessions     = make(map[string]*Session)
 )
 
 func initServices() {
@@ -79,7 +91,19 @@ func main() {
 		
 		sessionID := uuid.New().String()
 		
-		// 3. Emit Kafka event
+		// 3. Save to in-memory active sessions
+		sessionsMu.Lock()
+		sessions[sessionID] = &Session{
+			SessionID: sessionID,
+			BuyerID:   req.BuyerID,
+			SellerID:  req.SellerID,
+			Status:    "ACTIVE",
+			StartTime: time.Now(),
+			RelayID:   relay.ID,
+		}
+		sessionsMu.Unlock()
+
+		// 4. Emit Kafka event
 		msg, _ := json.Marshal(map[string]string{
 			"session_id": sessionID,
 			"buyer_id":   req.BuyerID,
@@ -121,29 +145,47 @@ func main() {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "HANDOFF_FAILED"})
 		}
 
+		// Update session in-memory state during handoff
+		sessionsMu.Lock()
+		s, exists := sessions[sessionID]
+		if exists {
+			s.SellerID = req.NewSellerID
+		}
+		sessionsMu.Unlock()
+
 		return c.JSON(http.StatusOK, result)
 	})
 
 	// Get active sessions
 	e.GET("/v1/sessions/active", func(c echo.Context) error {
-		// Mock active sessions for now
-		return c.JSON(http.StatusOK, []map[string]interface{}{
-			{
-				"session_id": uuid.New().String(),
-				"seller_id":  "relay_af_01",
-				"status":     "ACTIVE",
-				"start_time": time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
-			},
-		})
+		sessionsMu.RLock()
+		defer sessionsMu.RUnlock()
+
+		activeList := make([]*Session, 0)
+		for _, s := range sessions {
+			if s.Status == "ACTIVE" {
+				activeList = append(activeList, s)
+			}
+		}
+		return c.JSON(http.StatusOK, activeList)
 	})
 
 	// End session
 	e.POST("/v1/sessions/:id/end", func(c echo.Context) error {
 		sessionID := c.Param("id")
-		return c.JSON(http.StatusOK, map[string]string{
-			"session_id": sessionID,
-			"status":     "COMPLETED",
-		})
+		
+		sessionsMu.Lock()
+		s, exists := sessions[sessionID]
+		if exists {
+			s.Status = "COMPLETED"
+		}
+		sessionsMu.Unlock()
+
+		if !exists {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "SESSION_NOT_FOUND"})
+		}
+
+		return c.JSON(http.StatusOK, s)
 	})
 
 	port := os.Getenv("PORT")

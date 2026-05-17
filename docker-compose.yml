@@ -13,6 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./master_init.sql:/docker-entrypoint-initdb.d/master_init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dravio_user -d dravio_dev"]
       interval: 10s
@@ -82,7 +83,7 @@ services:
       dockerfile: services/audit-service/Dockerfile
     environment:
       - KAFKA_URL=kafka:9092
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+      - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
     depends_on:
       - kafka
       - postgres
@@ -93,7 +94,7 @@ services:
       dockerfile: services/analytics-service/Dockerfile
     environment:
       - KAFKA_URL=kafka:9092
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+      - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
     depends_on:
       - kafka
       - postgres
@@ -105,7 +106,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+      - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
     depends_on:
       - postgres
 
@@ -119,7 +120,7 @@ services:
       - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
       - KAFKA_URL=kafka:9092
       - USER_SERVICE_URL=http://user-service:3002
-      - JWT_SECRET=prod-placeholder-change-me
+      - JWT_SECRET=dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE
     depends_on:
       postgres:
         condition: service_healthy
@@ -141,6 +142,7 @@ services:
       - "3002:3002"
     environment:
       - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
+      - JWT_SECRET=dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,6 +175,7 @@ services:
       - "3005:3005"
     environment:
       - KAFKA_URL=kafka:9092
+      - JWT_SECRET=dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE
     depends_on:
       kafka:
         condition: service_started
@@ -186,6 +189,7 @@ services:
     environment:
       - KAFKA_URL=kafka:9092
       - REDIS_URL=redis:6379
+      - JWT_SECRET=dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE
     depends_on:
       kafka:
         condition: service_started
@@ -199,9 +203,28 @@ services:
     ports:
       - "3006:3006"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dravio
+      - DATABASE_URL=postgres://dravio_user:dravio_password@postgres:5432/dravio_dev
+      - KAFKA_URL=kafka:9092
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
+      - JWT_SECRET=dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: services/admin-service/Dockerfile
+    ports:
+      - "3008:3008"
+    environment:
+      - KAFKA_URL=kafka:9092
+      - JWT_SECRET=dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE
+    depends_on:
+      - kafka
+
 
   buyer-web:
     build:
@@ -221,7 +244,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - JWT_SECRET=prod-placeholder-change-me
+      - JWT_SECRET=dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE
     depends_on:
       - auth-service
       - user-service

@@ -63,7 +63,7 @@ fastify.post('/v1/auth/login', async (request: FastifyRequest, reply: FastifyRep
 
   try {
     const user = await authService.login(result.data);
-    const token = fastify.jwt.sign({ sub: user.id, roles: ['buyer'] });
+    const token = fastify.jwt.sign({ sub: user.id, roles: user.roles });
     return sendSuccess(reply, { access_token: token });
   } catch (err: any) {
     if (err.message === 'INVALID_CREDENTIALS') {

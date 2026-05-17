@@ -1,11 +1,11 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from './storage';
 import { api } from './api';
 
 export interface User {
   id: string;
   email: string;
-  role: 'buyer' | 'seller';
+  role: 'buyer' | 'seller' | 'admin';
 }
 
 interface AuthContextData {
@@ -26,8 +26,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     async function loadStoredData() {
       try {
-        const storedToken = await SecureStore.getItemAsync('dravio_token');
-        const storedUser = await SecureStore.getItemAsync('dravio_user');
+        const storedToken = await storage.getItem('dravio_token');
+        const storedUser = await storage.getItem('dravio_user');
 
         if (storedToken && storedUser) {
           setToken(storedToken);
@@ -44,15 +44,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (newToken: string, newUser: User) => {
-    await SecureStore.setItemAsync('dravio_token', newToken);
-    await SecureStore.setItemAsync('dravio_user', JSON.stringify(newUser));
+    await storage.setItem('dravio_token', newToken);
+    await storage.setItem('dravio_user', JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('dravio_token');
-    await SecureStore.deleteItemAsync('dravio_user');
+    await storage.deleteItem('dravio_token');
+    await storage.deleteItem('dravio_user');
     setToken(null);
     setUser(null);
   };

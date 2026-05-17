@@ -20,6 +20,13 @@ const fastify: FastifyInstance = Fastify({
 
 async function init() {
   await fastify.register(cors);
+  
+  // Security Hardening: Rate Limiting
+  await fastify.register(import('@fastify/rate-limit'), {
+    max: 100,
+    timeWindow: '1 minute'
+  });
+
   await fastify.register(jwt, {
     secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
   });

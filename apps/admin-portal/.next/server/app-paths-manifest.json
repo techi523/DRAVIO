@@ -1,0 +1,8 @@
+{
+  "/page": "app/page.js",
+  "/network/page": "app/network/page.js",
+  "/soc/page": "app/soc/page.js",
+  "/automation/page": "app/automation/page.js",
+  "/billing/page": "app/billing/page.js",
+  "/users/page": "app/users/page.js"
+}

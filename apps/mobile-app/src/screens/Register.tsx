@@ -1,21 +1,49 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet, View, Text, TextInput, TouchableOpacity,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
+} from 'react-native';
 import { Colors } from '../theme/colors';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
+
+function validatePassword(password: string): string | null {
+  if (password.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter.';
+  if (!/[0-9]/.test(password)) return 'Password must contain a number.';
+  return null;
+}
 
 export default function Register({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const { login } = useContext(AuthContext);
 
   const handleRegister = async () => {
-    if (!email || !password) {
-      setError('Please fill in all fields');
+    if (!email.trim() || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    const pwError = validatePassword(password);
+    if (pwError) {
+      setError(pwError);
+      return;
+    }
+
+    if (!agreed) {
+      setError('You must agree to the Terms of Service and Privacy Policy to continue.');
       return;
     }
 
@@ -23,167 +51,248 @@ export default function Register({ navigation }: any) {
     setError('');
 
     try {
-      let data;
-      try {
-        data = await api.post<any>('/auth/register', { email, password, role });
-      } catch (err) {
-        console.warn('Real register API failed, using mock auth');
-        data = {
-          token: 'mock_jwt_token',
-          user: { id: 'u' + Math.floor(Math.random()*1000), email, role }
-        };
-      }
-      
+      const data = await api.post<{ token: string; user: any }>('/auth/register', {
+        email: email.trim().toLowerCase(),
+        password,
+        role,
+      });
       await login(data.token, data.user);
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      const msg = err.message || '';
+      if (msg.includes('timed out') || msg.includes('Network request failed')) {
+        setError('Cannot reach the server. Check your connection.');
+      } else if (msg.includes('409') || msg.toLowerCase().includes('already')) {
+        setError('An account with this email already exists.');
+      } else {
+        setError(msg || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>DRAVIO</Text>
-      <Text style={styles.subtitle}>Create an account</Text>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>DRAVIO</Text>
+        <Text style={styles.subtitle}>Create Your Account</Text>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠️ {error}</Text>
+          </View>
+        ) : null}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={Colors.textMuted}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor={Colors.textMuted}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      <View style={styles.roleContainer}>
-        <Text style={styles.roleLabel}>I want to:</Text>
-        <View style={styles.roleToggles}>
-          <TouchableOpacity 
-            style={[styles.roleBtn, role === 'buyer' && styles.roleBtnActive]} 
-            onPress={() => setRole('buyer')}
-          >
-            <Text style={[styles.roleBtnText, role === 'buyer' && styles.roleBtnTextActive]}>BUY DATA</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.roleBtn, role === 'seller' && styles.roleBtnActive]} 
-            onPress={() => setRole('seller')}
-          >
-            <Text style={[styles.roleBtnText, role === 'seller' && styles.roleBtnTextActive]}>SELL DATA</Text>
-          </TouchableOpacity>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>EMAIL</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="you@example.com"
+            placeholderTextColor={Colors.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoCorrect={false}
+            accessibilityLabel="Email address"
+          />
         </View>
-      </View>
 
-      <TouchableOpacity style={styles.btn} onPress={handleRegister} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#000" />
-        ) : (
-          <Text style={styles.btnText}>SIGN UP</Text>
-        )}
-      </TouchableOpacity>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>PASSWORD</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Min 8 chars, 1 uppercase, 1 number"
+            placeholderTextColor={Colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            accessibilityLabel="Password"
+          />
+        </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Login')} style={{ marginTop: 20 }}>
-        <Text style={styles.linkText}>Already have an account? <Text style={{ color: Colors.primary }}>Log in</Text></Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>I WANT TO</Text>
+          <View style={styles.roleToggles}>
+            <TouchableOpacity
+              style={[styles.roleBtn, role === 'buyer' && styles.roleBtnActive]}
+              onPress={() => setRole('buyer')}
+              accessibilityLabel="Buy internet data"
+              accessibilityRole="radio"
+            >
+              <Text style={styles.roleIcon}>📱</Text>
+              <Text style={[styles.roleBtnText, role === 'buyer' && styles.roleBtnTextActive]}>BUY DATA</Text>
+              <Text style={styles.roleDesc}>Use shared internet</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.roleBtn, role === 'seller' && styles.roleBtnActive]}
+              onPress={() => setRole('seller')}
+              accessibilityLabel="Sell internet data"
+              accessibilityRole="radio"
+            >
+              <Text style={styles.roleIcon}>💰</Text>
+              <Text style={[styles.roleBtnText, role === 'seller' && styles.roleBtnTextActive]}>SELL DATA</Text>
+              <Text style={styles.roleDesc}>Share & earn</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Terms Acceptance — required by Google Play policy */}
+        <TouchableOpacity
+          style={styles.termsRow}
+          onPress={() => setAgreed(!agreed)}
+          accessibilityLabel="Agree to Terms of Service and Privacy Policy"
+          accessibilityRole="checkbox"
+        >
+          <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+            {agreed && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+          <Text style={styles.termsText}>
+            I agree to the{' '}
+            <Text style={styles.termsLink} onPress={() => navigation.navigate('Terms')}>
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text style={styles.termsLink} onPress={() => navigation.navigate('Privacy')}>
+              Privacy Policy
+            </Text>
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.btn, (loading || !agreed) && styles.btnDisabled]}
+          onPress={handleRegister}
+          disabled={loading || !agreed}
+          accessibilityLabel="Create account"
+          accessibilityRole="button"
+        >
+          {loading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <Text style={styles.btnText}>CREATE ACCOUNT</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Login')}
+          style={styles.linkContainer}
+          accessibilityRole="button"
+        >
+          <Text style={styles.linkText}>
+            Already have an account?{'  '}
+            <Text style={styles.linkHighlight}>Log In</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: Colors.background },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: Colors.background,
     padding: 24,
-    justifyContent: 'center',
+    paddingTop: 48,
   },
   title: {
-    fontSize: 42,
+    fontSize: 48,
     fontWeight: '900',
     color: Colors.primary,
     textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -1,
+    marginBottom: 6,
+    letterSpacing: -2,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 13,
     color: Colors.textMuted,
     textAlign: 'center',
     marginBottom: 40,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  inputGroup: { marginBottom: 20 },
+  label: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.surfaceMid,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: Colors.border,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
     color: Colors.foreground,
     fontSize: 16,
   },
-  roleContainer: {
-    marginBottom: 30,
-    marginTop: 10,
-  },
-  roleLabel: {
-    color: Colors.textMuted,
-    marginBottom: 10,
-    fontSize: 14,
-  },
-  roleToggles: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  roleToggles: { flexDirection: 'row', gap: 12 },
   roleBtn: {
     flex: 1,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    padding: 14,
-    borderRadius: 12,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceMid,
     alignItems: 'center',
   },
   roleBtnActive: {
     borderColor: Colors.primary,
-    backgroundColor: 'rgba(0,242,255,0.1)',
+    backgroundColor: 'rgba(0,242,255,0.08)',
   },
-  roleBtnText: {
-    color: Colors.textMuted,
-    fontWeight: 'bold',
+  roleIcon: { fontSize: 24, marginBottom: 6 },
+  roleBtnText: { color: Colors.textMuted, fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+  roleBtnTextActive: { color: Colors.primary },
+  roleDesc: { color: Colors.textMuted, fontSize: 10, marginTop: 4 },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    marginTop: 8,
+    gap: 12,
   },
-  roleBtnTextActive: {
-    color: Colors.primary,
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    flexShrink: 0,
   },
+  checkboxChecked: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  checkmark: { color: '#000', fontSize: 13, fontWeight: '900' },
+  termsText: { flex: 1, color: Colors.textMuted, fontSize: 13, lineHeight: 20 },
+  termsLink: { color: Colors.primary, fontWeight: '700' },
   btn: {
     backgroundColor: Colors.primary,
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
   },
-  btnText: {
-    color: '#000',
-    fontWeight: '900',
-    fontSize: 16,
-    letterSpacing: 1,
+  btnDisabled: { opacity: 0.4 },
+  btnText: { color: '#000', fontWeight: '900', fontSize: 16, letterSpacing: 1.5 },
+  errorBox: {
+    backgroundColor: 'rgba(255,51,102,0.1)',
+    borderWidth: 1,
+    borderColor: Colors.danger,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
   },
-  errorText: {
-    color: Colors.danger,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  linkText: {
-    color: Colors.textMuted,
-    textAlign: 'center',
-    fontSize: 14,
-  }
+  errorText: { color: Colors.danger, fontSize: 14, textAlign: 'center' },
+  linkContainer: { marginTop: 24, alignItems: 'center' },
+  linkText: { color: Colors.textMuted, fontSize: 14 },
+  linkHighlight: { color: Colors.primary, fontWeight: '700' },
 });

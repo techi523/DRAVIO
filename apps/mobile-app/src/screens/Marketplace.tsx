@@ -1,30 +1,47 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
 import { Colors } from '../theme/colors';
-import TunnelMonitor from '../components/TunnelMonitor';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
-import { VpnManager } from '../services/vpnManager';
+import { vpnService, VpnStats } from '../services/VpnService';
 
 export default function Marketplace() {
   const { user } = useContext(AuthContext);
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [session, setSession] = useState<VpnStats | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchSellers = async () => {
-      try {
-        const data = await api.get<any>('/marketplace/search?lat=0&lon=0');
-        setSellers(data.results || []);
-      } catch (err) {
-        console.error('Failed to fetch sellers:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchSellers();
+
+    const unsubscribe = vpnService.onStatsUpdate(stats => {
+      setSession(stats);
+      if (stats.status === 'disconnected') {
+        setActiveSessionId(null);
+      }
+    });
+
+    return unsubscribe;
   }, []);
+
+  const fetchSellers = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await api.get<any>('/marketplace/search?lat=0&lon=0');
+      const sorted = (data.results || []).sort((a: any, b: any) => 
+        (a.price_per_gb || 0.5) - (b.price_per_gb || 0.5) || (b.avg_speed || 0) - (a.avg_speed || 0)
+      );
+      setSellers(sorted);
+    } catch (err: any) {
+      setError(err.message || 'Unable to load connection nodes near you.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleConnect = async (seller: any) => {
     if (!user) {
@@ -34,168 +51,202 @@ export default function Marketplace() {
 
     setConnectingId(seller.id);
     try {
-      // 1. Request session from backend
-      const sessionData = await api.post<any>('/sessions', {
+      const res = await api.post<any>('/sessions', {
         buyer_id: user.id,
         seller_id: seller.id,
-        region: 'Africa' // Default for now
       });
 
-      if (!sessionData.vpn_config) {
-        throw new Error('VPN configuration missing from response');
-      }
-
-      // 2. Connect VPN
-      const success = await VpnManager.connect(sessionData.vpn_config);
-      
+      const success = await vpnService.connect(res.id, res.vpn_config);
       if (success) {
-        Alert.alert('Connected!', `Successfully connected to ${seller.name || 'Relay Node'}.`);
-      } else {
-        throw new Error('VPN handshake failed');
+        setActiveSessionId(res.id);
       }
     } catch (err: any) {
-      Alert.alert('Connection Failed', err.message || 'Could not establish connection.');
+      Alert.alert('Connection Failed', err.message || 'Could not establish encrypted VPN tunnel.');
     } finally {
       setConnectingId(null);
     }
   };
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 40}}>
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Limitless Data.</Text>
-        <Text style={styles.heroSubTitle}>Connected globally. Secured locally.</Text>
+  const handleDisconnect = async () => {
+    await vpnService.disconnect();
+    setActiveSessionId(null);
+    Alert.alert('Disconnected', 'Your encrypted session has ended.');
+  };
+
+  if (loading && sellers.length === 0) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Searching for peer nodes near you...</Text>
       </View>
+    );
+  }
 
-      <TunnelMonitor />
+  if (error && sellers.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorIcon}>📡</Text>
+        <Text style={styles.errorTitle}>Marketplace Offline</Text>
+        <Text style={styles.errorSub}>{error}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={fetchSellers}>
+          <Text style={styles.retryBtnText}>REFRESH NODES</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-      <Text style={styles.sectionTitle}>High Reliability Sellers</Text>
-      
-      {loading ? (
-        <ActivityIndicator color={Colors.primary} size="large" />
-      ) : (
-        sellers.map(s => (
-          <TouchableOpacity key={s.id} style={styles.card} onPress={() => handleConnect(s)}>
-            <View style={styles.cardHeader}>
-              <View style={styles.relayIcon} />
-              <View>
-                <Text style={styles.relayName}>{s.name || `Relay #${s.id.slice(0,4)}`}</Text>
-                <Text style={styles.relayMeta}>{s.location || 'Nairobi, KE'} • {s.distance?.toFixed(1) || '0.5'}{s.unit || 'km'}</Text>
+  return (
+    <View style={styles.main}>
+      <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 40}}>
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Find Fast Internet.</Text>
+          <Text style={styles.heroSubTitle}>Instantly connect to community-shared high-speed nodes.</Text>
+        </View>
+
+        {activeSessionId && session && (
+            <TouchableOpacity style={styles.activeBar} onPress={() => {}}>
+                <View style={styles.activeBarLeft}>
+                    <Text style={styles.activeBarTitle}>CONNECTED</Text>
+                    <Text style={styles.activeBarSub}>{(session.bytesIn / (1024*1024)).toFixed(1)} MB used</Text>
+                </View>
+                <TouchableOpacity style={styles.discBtnSmall} onPress={handleDisconnect}>
+                    <Text style={styles.discBtnText}>DISCONNECT</Text>
+                </TouchableOpacity>
+            </TouchableOpacity>
+        )}
+
+        <Text style={styles.sectionTitle}>Available Marketplace Nodes</Text>
+        
+        {sellers.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No internet providers broadcasting currently in your sector.</Text>
+          </View>
+        ) : (
+          sellers.map((s, idx) => (
+            <View key={s.id} style={[styles.card, idx === 0 && styles.featuredCard]}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.relayIcon, { backgroundColor: idx % 2 === 0 ? Colors.secondary : Colors.accent }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.relayName}>{s.name || `Node ${s.id.slice(0,4)}`}</Text>
+                  <Text style={styles.relayMeta}>{s.avg_speed || 50} Mbps • {s.stability || 99}% Stability</Text>
+                </View>
+                <Text style={styles.priceText}>${s.price_per_gb?.toFixed(2) || '0.50'}/GB</Text>
               </View>
-            </View>
-            <View style={styles.cardPrice}>
-              <Text style={styles.priceText}>${s.price_per_gb?.toFixed(2) || '0.50'}/GB</Text>
+              
               <TouchableOpacity 
                 style={[styles.buyBtn, connectingId === s.id && { opacity: 0.7 }]}
-                disabled={connectingId !== null}
+                disabled={connectingId !== null || activeSessionId !== null}
                 onPress={() => handleConnect(s)}
               >
                 {connectingId === s.id ? (
                   <ActivityIndicator color="#000" size="small" />
                 ) : (
-                  <Text style={styles.buyBtnText}>BUY</Text>
+                  <Text style={styles.buyBtnText}>{activeSessionId ? 'ACTIVE' : 'CONNECT'}</Text>
                 )}
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        ))
-      )}
-    </ScrollView>
+          ))
+        )}
+      </ScrollView>
+
+      {/* Live Session Telemetry Modal */}
+      <Modal visible={!!activeSessionId} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+            <View style={styles.sessionSheet}>
+                <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>Encrypted Session</Text>
+                    <View style={styles.liveBadge}><Text style={styles.liveText}>LIVE</Text></View>
+                </View>
+                
+                <View style={styles.statsRow}>
+                    <View style={styles.bigStat}>
+                        <Text style={styles.bigStatLabel}>DATA CONSUMED</Text>
+                        <Text style={styles.bigStatVal}>{((session?.bytesIn || 0) / (1024*1024)).toFixed(2)} <Text style={{fontSize: 14}}>MB</Text></Text>
+                    </View>
+                    <View style={styles.bigStat}>
+                        <Text style={styles.bigStatLabel}>SESSION COST</Text>
+                        <Text style={[styles.bigStatVal, { color: Colors.warning }]}>${(((session?.bytesIn || 0) / (1024*1024*1024)) * 0.5).toFixed(4)}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.meterRow}>
+                    <View style={styles.meter}>
+                        <Text style={styles.meterLabel}>LATENCY</Text>
+                        <Text style={styles.meterVal}>{session?.latency.toFixed(0)} ms</Text>
+                    </View>
+                    <View style={styles.meter}>
+                        <Text style={styles.meterLabel}>UPTIME</Text>
+                        <Text style={styles.meterVal}>{Math.floor((session?.uptime || 0) / 60)}m {(session?.uptime || 0) % 60}s</Text>
+                    </View>
+                </View>
+
+                <TouchableOpacity style={styles.primaryDiscBtn} onPress={handleDisconnect}>
+                    <Text style={styles.primaryDiscBtnText}>TERMINATE CONNECTION</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  main: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, padding: 24 },
+  center: {
     flex: 1,
-    padding: 24,
     backgroundColor: Colors.background,
-  },
-  hero: {
-    marginBottom: 32,
-  },
-  heroTitle: {
-    fontSize: 42,
-    fontWeight: '900',
-    color: Colors.foreground,
-    lineHeight: 44,
-  },
-  heroSubTitle: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: Colors.foreground,
-    marginTop: 32,
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: 'rgba(20, 22, 46, 0.7)',
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  cardHeader: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 32
   },
-  relayIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: Colors.secondary,
-    marginRight: 16,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  relayName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.foreground,
-  },
-  relayMeta: {
-    fontSize: 12,
+  loadingText: {
     color: Colors.textMuted,
-    marginTop: 2,
-  },
-  cardPrice: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  priceText: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: Colors.foreground,
-  },
-  buyBtn: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 100,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buyBtnText: {
-    color: '#000',
-    fontWeight: '900',
     fontSize: 14,
-    letterSpacing: 0.5,
-  }
+    marginTop: 16,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase'
+  },
+  hero: { marginBottom: 32 },
+  heroTitle: { fontSize: 36, fontWeight: '900', color: '#FFF', lineHeight: 40 },
+  heroSubTitle: { fontSize: 14, color: Colors.textMuted, marginTop: 8 },
+  activeBar: { backgroundColor: Colors.primary, padding: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  activeBarLeft: { flex: 1 },
+  activeBarTitle: { fontWeight: '900', color: '#000', fontSize: 12 },
+  activeBarSub: { color: 'rgba(0,0,0,0.6)', fontSize: 14, fontWeight: 'bold' },
+  discBtnSmall: { backgroundColor: '#000', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  discBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: '#FFF', marginBottom: 16 },
+  card: { backgroundColor: Colors.surfaceMid, padding: 20, borderRadius: 24, marginBottom: 16, borderWidth: 1, borderColor: Colors.border },
+  featuredCard: { borderColor: Colors.primary, backgroundColor: 'rgba(0, 242, 255, 0.05)' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  relayIcon: { width: 44, height: 44, borderRadius: 12, marginRight: 16 },
+  relayName: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
+  relayMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  priceText: { fontSize: 18, fontWeight: '900', color: Colors.success },
+  buyBtn: { backgroundColor: Colors.primary, padding: 14, borderRadius: 12, alignItems: 'center' },
+  buyBtnText: { color: '#000', fontWeight: '900', fontSize: 14 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  sessionSheet: { backgroundColor: Colors.surfaceHigh, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
+  sheetTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
+  liveBadge: { backgroundColor: Colors.danger, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  liveText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  statsRow: { flexDirection: 'row', gap: 20, marginBottom: 32 },
+  bigStat: { flex: 1 },
+  bigStatLabel: { fontSize: 10, fontWeight: '900', color: Colors.textMuted, marginBottom: 4 },
+  bigStatVal: { fontSize: 32, fontWeight: '900', color: '#FFF' },
+  meterRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: Colors.border, paddingVertical: 24, marginBottom: 24 },
+  meter: { flex: 1 },
+  meterLabel: { fontSize: 10, color: Colors.textMuted, marginBottom: 4 },
+  meterVal: { fontSize: 18, fontWeight: 'bold', color: '#FFF' },
+  primaryDiscBtn: { backgroundColor: 'transparent', borderWidth: 2, borderColor: Colors.danger, padding: 20, borderRadius: 16, alignItems: 'center' },
+  primaryDiscBtnText: { color: Colors.danger, fontWeight: '900', fontSize: 14, letterSpacing: 1 },
+  errorIcon: { fontSize: 48, marginBottom: 16 },
+  errorTitle: { fontSize: 18, fontWeight: '900', color: '#FFF', marginBottom: 8 },
+  errorSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', marginBottom: 24 },
+  retryBtn: { backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
+  retryBtnText: { color: '#000', fontWeight: '900', fontSize: 13 },
+  emptyCard: { backgroundColor: Colors.surfaceMid, padding: 32, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  emptyText: { color: Colors.textMuted, fontSize: 13, textAlign: 'center' }
 });

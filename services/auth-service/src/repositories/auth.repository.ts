@@ -4,13 +4,14 @@ export interface AuthUser {
   id: string;
   email: string;
   password_hash: string;
+  roles: string[];
   created_at: Date;
 }
 
 export class AuthRepository {
   async findByEmail(email: string): Promise<AuthUser | null> {
     const result = await pool.query(
-      'SELECT id, email, password_hash, created_at FROM auth.users WHERE email = $1',
+      'SELECT id, email, password_hash, roles, created_at FROM auth.users WHERE email = $1',
       [email]
     );
     return result.rows[0] || null;

@@ -1,3 +1,5 @@
+// Metro resolver redirects this to src/mocks/wireguard-mock.js in Expo Go / Web builds.
+// In custom native builds, this resolves to the real react-native-wireguard-vpn package.
 import Wireguard from 'react-native-wireguard-vpn';
 
 export interface VpnConfig {

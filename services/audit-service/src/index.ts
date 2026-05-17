@@ -21,7 +21,24 @@ class AuditConsumer {
   }
 
   async start() {
-    await this.consumer.connect();
+    let connected = false;
+    let retries = 10;
+    while (!connected && retries > 0) {
+      try {
+        console.log(`[Audit Consumer] Connecting to Kafka... (${retries} attempts remaining)`);
+        await this.consumer.connect();
+        connected = true;
+        console.log("[Audit Consumer] Successfully connected to Kafka!");
+      } catch (err) {
+        retries--;
+        if (retries === 0) {
+          throw new Error(`Failed to connect to Kafka after multiple retries: ${err}`);
+        }
+        console.log(`[Audit Consumer] Kafka connection failed, retrying in 5 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
+
     await this.consumer.subscribe({ topic: 'dm.audit.log', fromBeginning: true });
 
     await this.consumer.run({

@@ -1,6 +1,6 @@
 import { paymentRepository } from '../repositories/payment.repository.js';
 import { InitiatePaymentInput } from '../schema/payment.schema.js';
-// import { producer } from '../kafka/producer.js'; // To be implemented or updated
+import { producer } from '../kafka/producer.js';
 
 export class PaymentService {
   async initiatePayment(userId: string, input: InitiatePaymentInput) {
@@ -39,17 +39,17 @@ export class PaymentService {
     if (event === 'payment_intent.succeeded') {
       const transaction = await paymentRepository.completeByRef(providerRef);
       if (transaction) {
-        // TODO: Emit Kafka event
-        console.log(`Payment successful for transaction ${transaction.id}, emitting event...`);
-        // await producer.send({
-        //   topic: 'dm.payment.completed',
-        //   messages: [{ value: JSON.stringify({ transactionId: transaction.id, userId: transaction.user_id, amount: transaction.amount_usd }) }]
-        // });
+        console.log(`Payment successful for transaction ${transaction.id}, emitting dm.payment.completed event...`);
+        await producer.send({
+          topic: 'dm.payment.completed',
+          messages: [{ value: JSON.stringify({ transactionId: transaction.id, userId: transaction.user_id, amount: transaction.amount_usd }) }]
+        });
       }
       return transaction;
     }
     return null;
   }
 }
+
 
 export const paymentService = new PaymentService();
