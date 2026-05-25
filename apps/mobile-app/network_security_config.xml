@@ -5,13 +5,13 @@
   No plaintext HTTP traffic is permitted.
 -->
 <network-security-config>
-  <base-config cleartextTrafficPermitted="false">
+  <base-config cleartextTrafficPermitted="true">
     <trust-anchors>
       <certificates src="system" />
     </trust-anchors>
   </base-config>
   <!-- Allow cleartext only for local development (removed in release builds) -->
-  <domain-config cleartextTrafficPermitted="false">
+  <domain-config cleartextTrafficPermitted="true">
     <domain includeSubdomains="true">dravio.app</domain>
   </domain-config>
 </network-security-config>

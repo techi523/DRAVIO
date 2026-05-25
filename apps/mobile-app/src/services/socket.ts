@@ -8,8 +8,11 @@ const resolveWsUrl = (): string => {
 
   if (__DEV__ && Platform.OS !== 'web') {
     const scriptURL = NativeModules.SourceCode?.scriptURL || '';
-    const match = scriptURL.match(/http:\/\/([\d.]+):/);
-    if (match?.[1]) return `http://${match[1]}:8080`;
+    const match = scriptURL.match(/^(https?):\/\/([^/:]+)/);
+    if (match?.[1] && match?.[2]) {
+      const host = match[2];
+      return `http://${host}:8080`;
+    }
   }
 
   if (__DEV__) return 'http://localhost:8080';

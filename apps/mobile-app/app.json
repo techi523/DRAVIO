@@ -49,7 +49,7 @@
         }
       ],
       "googleServicesFile": "./google-services.json",
-      "usesCleartextTraffic": false,
+      "usesCleartextTraffic": true,
       "allowBackup": false,
       "networkSecurityConfig": "./network_security_config.xml",
       "predictiveBackGestureEnabled": true
