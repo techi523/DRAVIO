@@ -9,7 +9,7 @@ export class SessionManager {
    * Initializes a session, locks an escrow limit (optional but recommended),
    * and authorizes the hardware layer to route packets.
    */
-  async startSession(userId: string, hardwareId: string, pricePerMb: number): Promise<string> {
+  async startSession(userId: string, hardwareId: string, pricePerMb: number, sellerId: string): Promise<string> {
     const liveBalance = await walletRepository.getBalance(userId);
     
     // Hard constraint - prevent connection if broke
@@ -26,10 +26,11 @@ export class SessionManager {
     await redisCache.setSession(sessionToken, {
       userId,
       hardwareId,
-      pricePerMb
+      pricePerMb,
+      sellerId
     });
 
-    console.log(`[SessionManager] Session ${sessionToken} authorized for hardware ${hardwareId}`);
+    console.log(`[SessionManager] Session ${sessionToken} authorized for hardware ${hardwareId} with seller ${sellerId}`);
     return sessionToken;
   }
 

@@ -25,9 +25,13 @@ const fastify: FastifyInstance = Fastify({
 });
 
 async function init() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('FATAL: JWT_SECRET environment variable is required. Refusing to start with insecure defaults.');
+  }
+
   await fastify.register(cors);
   await fastify.register(jwt, {
-    secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
+    secret: process.env.JWT_SECRET,
   });
   await fastify.register(authMiddleware);
 }

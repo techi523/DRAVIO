@@ -5,11 +5,11 @@ export async function sessionRoutes(fastify: FastifyInstance) {
   fastify.post('/v1/billing/sessions/start', { 
     preHandler: [fastify.authenticate] 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { hardwareId, pricePerMb } = request.body as any;
+    const { hardwareId, pricePerMb, sellerId } = request.body as any;
     const userId = (request.user as any).sub;
 
     try {
-      const sessionToken = await sessionManager.startSession(userId, hardwareId, Number(pricePerMb));
+      const sessionToken = await sessionManager.startSession(userId, hardwareId, Number(pricePerMb), sellerId || '');
       return reply.send({ success: true, sessionToken });
     } catch (err: any) {
       if (err.message === 'INSUFFICIENT_FUNDS') {

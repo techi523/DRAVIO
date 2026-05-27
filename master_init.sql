@@ -57,13 +57,15 @@ CREATE TABLE IF NOT EXISTS payments.transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL,
     user_id UUID NOT NULL,
-    amount_usd DECIMAL(15,4) NOT NULL,
-    platform_fee_usd DECIMAL(15,4) NOT NULL,
-    seller_net_usd DECIMAL(15,4) NOT NULL,
+    amount_usd DECIMAL(15,4) NOT NULL CHECK (amount_usd > 0),
+    platform_fee_usd DECIMAL(15,4) NOT NULL DEFAULT 0,
+    seller_net_usd DECIMAL(15,4) NOT NULL DEFAULT 0,
     currency VARCHAR(10) NOT NULL,
     payment_method VARCHAR(50) NOT NULL,
     provider_ref VARCHAR(255),
+    idempotency_key VARCHAR(255) UNIQUE,
     status VARCHAR(20) DEFAULT 'PENDING',
+    failure_reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -87,7 +89,8 @@ CREATE TABLE IF NOT EXISTS payments.payouts (
 CREATE TABLE IF NOT EXISTS billing.wallets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id TEXT UNIQUE NOT NULL,
-    balance_usd DECIMAL(12,2) DEFAULT 0.00,
+    balance_usd DECIMAL(12,2) DEFAULT 0.00 CHECK (balance_usd >= 0),
+    escrow_usd DECIMAL(12,2) DEFAULT 0.00 CHECK (escrow_usd >= 0),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -220,3 +223,28 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_session
 
 CREATE INDEX IF NOT EXISTS idx_telemetry_time
   ON analytics.session_telemetry (recorded_at);
+
+-- ==========================================
+-- SELLER EARNINGS TABLE
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS billing.seller_earnings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    seller_id UUID NOT NULL,
+    session_id UUID NOT NULL,
+    amount_usd DECIMAL(15,4) NOT NULL CHECK (amount_usd > 0),
+    platform_fee_usd DECIMAL(15,4) NOT NULL DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    settled_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_seller_earnings_seller
+  ON billing.seller_earnings (seller_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_seller_earnings_session
+  ON billing.seller_earnings (session_id);
+
+-- Idempotency key index
+CREATE INDEX IF NOT EXISTS idx_payments_idempotency
+  ON payments.transactions (idempotency_key) WHERE idempotency_key IS NOT NULL;

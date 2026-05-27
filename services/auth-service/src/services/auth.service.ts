@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import axios from 'axios';
 import { authRepository } from '../repositories/auth.repository.js';
 import { RegisterInput, LoginInput } from '../schema/auth.schema.js';

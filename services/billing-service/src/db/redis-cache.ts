@@ -4,12 +4,13 @@ export const redis = createClient({
   url: process.env.REDIS_URL || 'redis://localhost:6379'
 });
 
-redis.on('error', (err) => console.error('Redis Client Error', err));
+redis.on('error', (err: any) => console.error('Redis Client Error', err));
 
 export interface ActiveSessionCache {
   userId: string;
   hardwareId: string;
   pricePerMb: number;
+  sellerId: string;
 }
 
 export class RedisCache {

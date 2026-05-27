@@ -41,6 +41,14 @@ export class PaymentRepository {
     );
     return result.rows[0] || null;
   }
+
+  async failByRef(ref: string, reason?: string): Promise<Transaction | null> {
+    const result = await pool.query(
+      'UPDATE payments.transactions SET status = $1, failure_reason = $2, updated_at = CURRENT_TIMESTAMP WHERE provider_ref = $3 RETURNING *',
+      ['FAILED', reason || null, ref]
+    );
+    return result.rows[0] || null;
+  }
 }
 
 export const paymentRepository = new PaymentRepository();

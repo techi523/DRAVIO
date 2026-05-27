@@ -22,9 +22,13 @@ const fastify: FastifyInstance = Fastify({
 });
 
 async function init() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('FATAL: JWT_SECRET environment variable is required. Refusing to start with insecure defaults.');
+  }
+
   await fastify.register(cors);
   await fastify.register(jwt, {
-    secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
+    secret: process.env.JWT_SECRET,
   });
   await fastify.register(authMiddleware);
 }
@@ -50,7 +54,7 @@ fastify.post('/v1/payments/initiate', { preHandler: [(req, reply) => fastify.aut
   }
 });
 
-// Webhook for payment confirmation
+// Stripe Webhook (with signature verification)
 fastify.post('/v1/payments/webhook', async (request: FastifyRequest, reply: FastifyReply) => {
   const result = WebhookSchema.safeParse(request.body);
   if (!result.success) {
@@ -68,6 +72,18 @@ fastify.post('/v1/payments/webhook', async (request: FastifyRequest, reply: Fast
   } catch (err: any) {
     fastify.log.error(err);
     return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
+// M-Pesa Daraja API Callback
+fastify.post('/v1/payments/mpesa/callback', async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const result = await paymentService.handleMpesaCallback(request.body);
+    return sendSuccess(reply, result);
+  } catch (err: any) {
+    fastify.log.error(err);
+    // Always return 200 to M-Pesa to prevent retries on our processing errors
+    return sendSuccess(reply, { received: true });
   }
 });
 

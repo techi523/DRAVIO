@@ -12,16 +12,17 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   
   const [profile, setProfile] = useState({
-    name: 'Alex Dravio',
-    email: 'alex.dravio@cybernet.ke',
-    country: 'KE'
+    name: '',
+    email: '',
+    country: ''
   });
 
   const [editData, setEditData] = useState({ ...profile });
-  const [payoutData, setPayoutData] = useState({ method: 'M-Pesa', account: '+254712345678' });
-  const [securityData, setSecurityData] = useState({ twoFactor: true, biometric: false });
+  const [payoutData, setPayoutData] = useState({ method: '', account: '' });
+  const [securityData, setSecurityData] = useState({ twoFactor: false, biometric: false });
   const [alertsData, setAlertsData] = useState({ usage: true, drops: true, autoKill: false });
   const [optimizerData, setOptimizerData] = useState({ maxBandwidth: '100', concurrentUsers: '10', autoThrottle: true });
+  const [stats, setStats] = useState({ rating: '—', sales: '—', uptime: '—' });
 
   useEffect(() => {
     fetchProfile();
@@ -29,21 +30,34 @@ export default function Profile() {
 
   const fetchProfile = async () => {
     try {
+        setLoading(true);
         const data = await api.get<any>('/users/me');
         if (data?.profile) {
-            setProfile({
-                name: data.profile.full_name,
-                email: profile.email,
-                country: data.profile.country_code
-            });
-            setEditData({
-                name: data.profile.full_name,
-                email: profile.email,
-                country: data.profile.country_code
-            });
+            const p = {
+                name: data.profile.full_name || '',
+                email: data.profile.email || '',
+                country: data.profile.country_code || ''
+            };
+            setProfile(p);
+            setEditData(p);
         }
-    } catch (err) {
-        console.warn('Could not fetch live profile, using demo data');
+        // Fetch real stats
+        try {
+            const statsData = await api.get<any>('/users/me/stats');
+            if (statsData) {
+                setStats({
+                    rating: statsData.rating?.toFixed(1) || '—',
+                    sales: statsData.total_sales?.toString() || '—',
+                    uptime: statsData.uptime_pct ? `${Math.round(statsData.uptime_pct)}%` : '—'
+                });
+            }
+        } catch (_err) {
+            // Stats endpoint may not exist yet
+        }
+    } catch (_err) {
+        // Profile will show empty/loading state
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -64,13 +78,20 @@ export default function Profile() {
     }
   };
 
-  const handleSavePayout = () => {
+  const handleSavePayout = async () => {
       setLoading(true);
-      setTimeout(() => {
-          setLoading(false);
+      try {
+          await api.put('/users/me/payout', {
+              method: payoutData.method,
+              account: payoutData.account
+          });
           setIsPayoutOpen(false);
           Alert.alert('Success', 'Payout settings securely saved.');
-      }, 1000);
+      } catch (err: any) {
+          Alert.alert('Error', err.message || 'Failed to save payout settings.');
+      } finally {
+          setLoading(false);
+      }
   };
 
   return (
@@ -109,15 +130,15 @@ export default function Profile() {
             {/* Stats Summary */}
             <View style={styles.statsRow}>
                 <View style={styles.miniStat}>
-                    <Text style={styles.miniStatVal}>4.9</Text>
+                    <Text style={styles.miniStatVal}>{stats.rating}</Text>
                     <Text style={styles.miniStatLabel}>Rating</Text>
                 </View>
                 <View style={styles.miniStat}>
-                    <Text style={styles.miniStatVal}>124</Text>
+                    <Text style={styles.miniStatVal}>{stats.sales}</Text>
                     <Text style={styles.miniStatLabel}>Sales</Text>
                 </View>
                 <View style={styles.miniStat}>
-                    <Text style={styles.miniStatVal}>99%</Text>
+                    <Text style={styles.miniStatVal}>{stats.uptime}</Text>
                     <Text style={styles.miniStatLabel}>Uptime</Text>
                 </View>
             </View>

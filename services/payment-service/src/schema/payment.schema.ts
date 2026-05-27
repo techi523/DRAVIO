@@ -5,6 +5,7 @@ export const InitiatePaymentSchema = z.object({
   currency: z.string().length(3).default('USD'),
   method: z.enum(['STRIPE', 'MPESA', 'CRYPTO']),
   session_id: z.string().uuid(),
+  phone_number: z.string().optional(),
   idempotency_key: z.string().uuid().optional(),
 });
 

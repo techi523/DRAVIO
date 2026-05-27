@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/dravio/session-service/internal/orchestrator"
 	"github.com/dravio/session-service/internal/wireguard"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -29,28 +29,82 @@ var (
 	kafkaWriter  *kafka.Writer
 	relayManager *orchestrator.RelayManager
 	handoffMgr   *orchestrator.HandoffManager
-	sessionsMu   sync.RWMutex
-	sessions     = make(map[string]*Session)
+	rdb          *redis.Client
+	ctxBg        = context.Background()
 )
 
 func initServices() {
 	relayManager = orchestrator.NewRelayManager()
 	handoffMgr = &orchestrator.HandoffManager{RelayManager: relayManager}
 
-	// Add mock relay nodes
-	relayManager.AddNode(&orchestrator.RelayNode{
-		ID:        "relay_af_01",
-		Region:    "Africa",
-		Endpoint:  "154.12.34.56:51820",
-		PublicKey: "relay_public_key_abc",
-		LoadPct:   10.5,
-	})
+	// Load relay nodes from configuration (URL or file)
+	if err := relayManager.LoadRelaysFromConfig(); err != nil {
+		fmt.Printf("WARNING: Could not load relay config: %v. Service will start with no relays.\n", err)
+	} else {
+		nodes := relayManager.GetAllNodes()
+		fmt.Printf("Loaded %d relay node(s) from configuration\n", len(nodes))
+		for _, n := range nodes {
+			fmt.Printf("  -> %s (%s) @ %s [load: %.1f%%]\n", n.ID, n.Region, n.Endpoint, n.LoadPct)
+		}
+	}
+
+	// Start background health checker
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			relayManager.HealthCheckAll()
+		}
+	}()
 
 	kafkaWriter = &kafka.Writer{
 		Addr:     kafka.TCP(os.Getenv("KAFKA_URL")),
 		Topic:    "dm.session.started",
 		Balancer: &kafka.LeastBytes{},
 	}
+
+	// Initialize Redis Connection
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		// Fallback to simple address
+		opts = &redis.Options{Addr: redisURL}
+	}
+	rdb = redis.NewClient(opts)
+	
+	// Test Connection
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		fmt.Printf("WARNING: Could not connect to Redis: %v. Persistent session storage will be degraded.\n", err)
+	} else {
+		fmt.Println("Successfully connected to Redis cluster.")
+	}
+}
+
+func saveSession(s *Session) error {
+	val, err := json.Marshal(s)
+	if err != nil {
+		return err
+	}
+	return rdb.Set(ctxBg, "session:"+s.SessionID, val, 24*time.Hour).Err()
+}
+
+func getSession(sessionID string) (*Session, error) {
+	val, err := rdb.Get(ctxBg, "session:"+sessionID).Result()
+	if err == redis.Nil {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	var s Session
+	if err := json.Unmarshal([]byte(val), &s); err != nil {
+		return nil, err
+	}
+	return &s, nil
 }
 
 func main() {
@@ -68,9 +122,9 @@ func main() {
 
 	e.POST("/v1/sessions", func(c echo.Context) error {
 		var req struct {
-			BuyerID   string `json:"buyer_id"`
-			SellerID  string `json:"seller_id"`
-			Region    string `json:"region"`
+			BuyerID  string `json:"buyer_id"`
+			SellerID string `json:"seller_id"`
+			Region   string `json:"region"`
 		}
 		if err := c.Bind(&req); err != nil {
 			return err
@@ -91,9 +145,8 @@ func main() {
 		
 		sessionID := uuid.New().String()
 		
-		// 3. Save to in-memory active sessions
-		sessionsMu.Lock()
-		sessions[sessionID] = &Session{
+		// 3. Save to Redis
+		s := &Session{
 			SessionID: sessionID,
 			BuyerID:   req.BuyerID,
 			SellerID:  req.SellerID,
@@ -101,14 +154,16 @@ func main() {
 			StartTime: time.Now(),
 			RelayID:   relay.ID,
 		}
-		sessionsMu.Unlock()
+		if err := saveSession(s); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "SESSION_SAVE_FAILED"})
+		}
 
 		// 4. Emit Kafka event
 		msg, _ := json.Marshal(map[string]string{
 			"session_id": sessionID,
 			"buyer_id":   req.BuyerID,
 			"seller_id":  req.SellerID,
-			"status":    "STARTED",
+			"status":     "STARTED",
 			"relay_id":   relay.ID,
 		})
 		
@@ -145,28 +200,37 @@ func main() {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "HANDOFF_FAILED"})
 		}
 
-		// Update session in-memory state during handoff
-		sessionsMu.Lock()
-		s, exists := sessions[sessionID]
-		if exists {
+		// Update session in Redis during handoff
+		s, err := getSession(sessionID)
+		if err == nil && s != nil {
 			s.SellerID = req.NewSellerID
+			_ = saveSession(s)
 		}
-		sessionsMu.Unlock()
 
 		return c.JSON(http.StatusOK, result)
 	})
 
 	// Get active sessions
 	e.GET("/v1/sessions/active", func(c echo.Context) error {
-		sessionsMu.RLock()
-		defer sessionsMu.RUnlock()
+		keys, err := rdb.Keys(ctxBg, "session:*").Result()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "REDIS_ERROR"})
+		}
 
 		activeList := make([]*Session, 0)
-		for _, s := range sessions {
-			if s.Status == "ACTIVE" {
-				activeList = append(activeList, s)
+		for _, key := range keys {
+			val, err := rdb.Get(ctxBg, key).Result()
+			if err != nil {
+				continue
+			}
+			var s Session
+			if err := json.Unmarshal([]byte(val), &s); err == nil {
+				if s.Status == "ACTIVE" {
+					activeList = append(activeList, &s)
+				}
 			}
 		}
+
 		return c.JSON(http.StatusOK, activeList)
 	})
 
@@ -174,15 +238,14 @@ func main() {
 	e.POST("/v1/sessions/:id/end", func(c echo.Context) error {
 		sessionID := c.Param("id")
 		
-		sessionsMu.Lock()
-		s, exists := sessions[sessionID]
-		if exists {
-			s.Status = "COMPLETED"
-		}
-		sessionsMu.Unlock()
-
-		if !exists {
+		s, err := getSession(sessionID)
+		if err != nil || s == nil {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "SESSION_NOT_FOUND"})
+		}
+
+		s.Status = "COMPLETED"
+		if err := saveSession(s); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "SESSION_UPDATE_FAILED"})
 		}
 
 		return c.JSON(http.StatusOK, s)

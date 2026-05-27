@@ -1,4 +1,4 @@
-name: DRAVIO CI/CD
+name: DRAVIO CI/CD Pipeline
 
 on:
   push:
@@ -6,18 +6,191 @@ on:
   pull_request:
     branches: [ main ]
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run Tests
-        run: echo "Integrating service-specific tests..."
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
 
-  build-and-push:
-    needs: test
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Build Docker Image
-        run: echo "Building and tagging images for ECR..."
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@0a44ba7841725637a19997854c61726a56023cf3 # v4.0.4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeCheck Auth Service
+        run: cd services/auth-service && npx tsc --noEmit
+      
+      - name: TypeCheck User Service
+        run: cd services/user-service && npx tsc --noEmit
+
+      - name: TypeCheck Payment Service
+        run: cd services/payment-service && npx tsc --noEmit
+
+      - name: TypeCheck Billing Service
+        run: cd services/billing-service && npx tsc --noEmit
+
+      - name: TypeCheck Gateway Service
+        run: cd services/gateway-service && npx tsc --noEmit
+
+      - name: TypeCheck Marketplace Service
+        run: cd services/marketplace-service && npx tsc --noEmit
+
+      - name: TypeCheck Admin Service
+        run: cd services/admin-service && npx tsc --noEmit
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@0a44ba7841725637a19997854c61726a56023cf3 # v4.0.4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Billing Service Tests
+        run: cd services/billing-service && npx jest --ci --passWithNoTests
+        env:
+          JWT_SECRET: test-only-secret-do-not-use-in-production
+
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service:
+          - auth-service
+          - user-service
+          - payment-service
+          - billing-service
+          - gateway-service
+          - marketplace-service
+          - session-service
+          - admin-service
+          - audit-service
+          - analytics-service
+          - metering-service
+          - fraud-discovery
+          - isp-service
+        include:
+          - service: auth-service
+            dockerfile: services/auth-service/Dockerfile
+          - service: user-service
+            dockerfile: services/user-service/Dockerfile
+          - service: payment-service
+            dockerfile: services/payment-service/Dockerfile
+          - service: billing-service
+            dockerfile: services/billing-service/Dockerfile
+          - service: gateway-service
+            dockerfile: services/gateway-service/Dockerfile
+          - service: marketplace-service
+            dockerfile: services/marketplace-service/Dockerfile
+          - service: session-service
+            dockerfile: services/session-service/Dockerfile
+          - service: admin-service
+            dockerfile: services/admin-service/Dockerfile
+          - service: audit-service
+            dockerfile: services/audit-service/Dockerfile
+          - service: analytics-service
+            dockerfile: services/analytics-service/Dockerfile
+          - service: metering-service
+            dockerfile: services/metering-service/Dockerfile
+          - service: fraud-discovery
+            dockerfile: services/fraud-discovery/Dockerfile
+          - service: isp-service
+            dockerfile: services/isp-service/Dockerfile
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.0.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280b5441830 # v5.0.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+
+  build-frontend:
+    name: Build Frontend Apps
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        app:
+          - admin-portal
+          - buyer-web
+        include:
+          - app: admin-portal
+            dockerfile: apps/admin-portal/Dockerfile
+          - app: buyer-web
+            dockerfile: apps/buyer-web/Dockerfile
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.0.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280b5441830 # v5.0.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.app }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.app }}:latest
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-images, build-frontend]
+    environment: 'staging'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      
+      - name: Deploy to Staging
+        run: |
+          echo "Deploying commit ${{ github.sha }} to staging environment"
+          # Replace with your actual deployment command:
+          # kubectl set image deployment/auth-service auth-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/auth-service:${{ github.sha }}
+          # OR docker-compose -f docker-compose.prod.yml up -d

@@ -5,30 +5,40 @@ import cors from '@fastify/cors';
 import { Server as SocketIOServer } from 'socket.io';
 import { io as ClientIO } from 'socket.io-client';
 
-// ─── Service URLs (Docker-internal hostnames & ports) ────────────────────────
+const isLocal = process.env.LOCAL_DEV === 'true';
+
 const SERVICES = {
-  auth:        'http://auth-service:3000',
-  user:        'http://user-service:3002',
-  marketplace: 'http://marketplace-service:3000',
-  session:     'http://session-service:3005',
-  payment:     'http://payment-service:3005',
-  billing:     'http://billing-service:3006',
-  isp:         'http://isp-service:8080',
+  auth:        isLocal ? 'http://localhost:3000' : 'http://auth-service:3000',
+  user:        isLocal ? 'http://localhost:3002' : 'http://user-service:3002',
+  marketplace: isLocal ? 'http://localhost:3003' : 'http://marketplace-service:3000',
+  session:     isLocal ? 'http://localhost:3005' : 'http://session-service:3005',
+  payment:     isLocal ? 'http://localhost:3004' : 'http://payment-service:3005',
+  billing:     isLocal ? 'http://localhost:3006' : 'http://billing-service:3006',
+  isp:         isLocal ? 'http://localhost:8083' : 'http://isp-service:8080',
 } as const;
 
 const fastify = Fastify({ logger: true });
 
 async function build() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('FATAL: JWT_SECRET environment variable is required. Refusing to start with insecure defaults.');
+  }
+
   // ── CORS ───────────────────────────────────────────────────────────────────
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8000'];
+
   await fastify.register(cors, {
-    origin: '*',
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   });
 
   // ── JWT ────────────────────────────────────────────────────────────────────
   await fastify.register(jwt, {
-    secret: process.env.JWT_SECRET || 'dev-secret-key-12345',
+    secret: process.env.JWT_SECRET,
   });
 
   // ── Health endpoints ───────────────────────────────────────────────────────
@@ -176,12 +186,17 @@ const start = async () => {
     await build();
     await fastify.listen({ port: 8080, host: '0.0.0.0' });
 
+    const allowedOrigins = process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',')
+      : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8000'];
+
     // Attach Socket.io directly to Fastify's underlying Node http.Server.
     // This avoids any plugin type-overload issues while sharing the same port.
     const io = new SocketIOServer(fastify.server, {
       cors: {
-        origin: '*',
+        origin: allowedOrigins,
         methods: ['GET', 'POST'],
+        credentials: true
       },
       transports: ['websocket', 'polling'],
       pingTimeout: 60000,

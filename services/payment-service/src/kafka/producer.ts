@@ -15,7 +15,7 @@ export const producer = {
       console.log('Payment service connected to Kafka');
     }
   },
-  send: async (payload: { topic: string, messages: { value: string }[] }) => {
+  send: async (payload: { topic: string, messages: { key?: string, value: string }[] }) => {
     if (!producerInstance) {
       await producer.connect();
     }

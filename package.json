@@ -6,6 +6,10 @@
     "apps/*",
     "packages/*"
   ],
+  "scripts": {
+    "dev": "npm run dev -w apps/buyer-web",
+    "dev:admin": "npm run dev -w apps/admin-portal"
+  },
   "engines": {
     "node": ">=20.0.0"
   },

@@ -31,16 +31,20 @@ const actionDispatcher = new ActionDispatcher(kafka);
 ruleEngine.setDispatcher(actionDispatcher);
 
 async function init() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('FATAL: JWT_SECRET environment variable is required. Refusing to start with insecure defaults.');
+  }
+
   await fastify.register(cors, {
-    origin: true,
+    origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
   });
   await fastify.register(jwt, {
-    secret: process.env.JWT_SECRET || 'dRaViO_pRoDuCtIoN_sEcReT_kEy_2026_xYz_9876543210_vPn_MaRkEtPlAcE',
+    secret: process.env.JWT_SECRET,
   });
-  // Note: temporarily commenting authMiddleware to ease testing locally if needed, but keeping it for production
-  // await fastify.register(authMiddleware);
+  await fastify.register(authMiddleware);
 
   // Health check
   fastify.get('/health', async () => ({ status: 'ok', service: 'admin-service' }));
@@ -60,8 +64,7 @@ async function init() {
     const { targetType, targetId, actionName } = req.params;
     const payload = req.body;
     
-    // In production, get adminId from req.user
-    const adminId = 'system-admin'; 
+    const adminId = req.user?.sub || 'unknown';
     
     const result = await actionDispatcher.dispatch({
         targetType,
@@ -126,25 +129,10 @@ const runServer = async () => {
 
     io.on('connection', (socket) => {
       fastify.log.info(`Admin connected: ${socket.id}`);
-      
-      socket.emit('system_health', {
-        api: 'up',
-        vpn_nodes: 42,
-        active_sessions: 156,
-        threat_level: 'low'
-      });
+      // Real system health will be pushed via Kafka events from each service
     });
 
-    start(io); // Start Kafka consumer
-
-    // Mock real-time event simulation for dashboard testing
-    setInterval(() => {
-        io.emit('live_traffic', {
-            bytes_in: Math.random() * 1000000,
-            bytes_out: Math.random() * 1000000,
-            timestamp: new Date()
-        });
-    }, 2000);
+    start(io); // Start Kafka consumer — provides real-time telemetry
 
     fastify.log.info(`Admin Control Service listening on port ${port}`);
   } catch (err) {

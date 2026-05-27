@@ -2,6 +2,7 @@ import { redisCache } from '../../db/redis-cache.js';
 import { walletRepository } from '../../repositories/wallet.repository.js';
 import { sessionRepository } from '../../repositories/session.repository.js';
 import { sessionProducer } from '../../events/producers/session.producer.js';
+import { pool } from '../../db/client.js';
 
 export class ByteTrackerEngine {
   /**
@@ -23,12 +24,30 @@ export class ByteTrackerEngine {
     if (cost <= 0) return; // Skip zero-cost micro-reports
 
     try {
-      // 3. Database consistency atomic logging (Live deduction out of Escrow or Source)
-      // Usually, we've locked an escrow. We'll deduct from main balance live for this demo.
+      // 3. Database consistency atomic deduction from user's prepaid escrow balance
       const currentLiveBalance = await walletRepository.directDeduct(session.userId, cost);
       
       // Update session statistics
       await sessionRepository.updateSessionUsage(sessionToken, bytesUsed, cost);
+
+      // 3.1 Credit the seller's wallet and log seller earnings
+      const platformFeePct = parseFloat(process.env.PLATFORM_FEE_PCT || '0.10');
+      const platformFee = cost * platformFeePct;
+      const sellerNet = cost - platformFee;
+
+      if (session.sellerId && sellerNet > 0) {
+        await walletRepository.topup(session.sellerId, sellerNet);
+        
+        // Find session UUID in the database using sessionToken to satisfy foreign key constraints
+        const sessionRecord = await sessionRepository.getActiveSession(sessionToken);
+        const sessionId = sessionRecord ? sessionRecord.id : '00000000-0000-0000-0000-000000000000';
+        
+        await pool.query(
+          `INSERT INTO billing.seller_earnings (seller_id, session_id, amount_usd, platform_fee_usd, status)
+           VALUES ($1, $2, $3, $4, 'SETTLED')`,
+          [session.sellerId, sessionId, sellerNet, platformFee]
+        );
+      }
 
       // 4. Threshold & Kill Execution
       if (currentLiveBalance <= 0) {
@@ -39,7 +58,7 @@ export class ByteTrackerEngine {
         await sessionRepository.endSession(sessionToken, 'KILLED');
         await redisCache.removeSession(sessionToken);
       } else if (currentLiveBalance < 0.50) {
-         // (Opional) push warning to mobile app
+         // (Optional) push warning to mobile app
          console.log(`[ByteTracker] User ${session.userId} balance warning: $${currentLiveBalance.toFixed(2)}`);
       }
 
