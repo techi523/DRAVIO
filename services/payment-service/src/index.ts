@@ -87,6 +87,27 @@ fastify.post('/v1/payments/mpesa/callback', async (request: FastifyRequest, repl
   }
 });
 
+// Check payment status (used by frontend polling)
+fastify.get('/v1/payments/:id/status', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  const { id } = request.params as any;
+  try {
+    const { paymentRepository } = await import('./repositories/payment.repository.js');
+    const transaction = await paymentRepository.findById(id);
+    if (!transaction) {
+      return sendError(reply, 'PAYMENT_NOT_FOUND', 404);
+    }
+    return sendSuccess(reply, {
+      payment_id: transaction.id,
+      status: transaction.status,
+      amount_usd: transaction.amount_usd,
+      provider_ref: transaction.provider_ref,
+    });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3004');

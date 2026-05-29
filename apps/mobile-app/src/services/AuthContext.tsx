@@ -32,6 +32,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (storedToken && storedUser) {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
+          // Background session recovery for active VPN tunnels
+          import('./VpnService').then(m => m.vpnService.recoverSession());
         }
       } catch (err) {
         console.warn('Failed to load auth data', err);

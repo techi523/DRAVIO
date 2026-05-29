@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, DeviceEventEmitter } from 'react-native';
 import { Colors } from '../theme/colors';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
 import { vpnService, VpnStats } from '../services/VpnService';
+import { subscribeToPeerUpdates } from '../services/socket';
 
 export default function Marketplace() {
   const { user } = useContext(AuthContext);
@@ -24,10 +25,37 @@ export default function Marketplace() {
       }
     });
 
-    return unsubscribe;
+    let peerUnsub: (() => void) | undefined;
+    subscribeToPeerUpdates((data) => {
+      setSellers((prev) => {
+        if (data.status === 'offline') {
+          return prev.filter((s) => s.id !== data.sellerId);
+        }
+        
+        const existingIdx = prev.findIndex((s) => s.id === data.sellerId);
+        if (existingIdx !== -1) {
+          const next = [...prev];
+          next[existingIdx] = { ...next[existingIdx], ...data.sellerData };
+          return next;
+        } else {
+          if (data.sellerData) {
+            return [...prev, data.sellerData];
+          }
+          return prev;
+        }
+      });
+    }).then(unsubFn => { peerUnsub = unsubFn; });
+
+    const reconnectSub = DeviceEventEmitter.addListener('dravio:socket_connected', fetchSellers);
+
+    return () => {
+      unsubscribe();
+      if (peerUnsub) peerUnsub();
+      reconnectSub.remove();
+    };
   }, []);
 
-  const fetchSellers = async () => {
+  const fetchSellers = React.useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -41,9 +69,9 @@ export default function Marketplace() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleConnect = async (seller: any) => {
+  const handleConnect = React.useCallback(async (seller: any) => {
     if (!user) {
       Alert.alert('Login Required', 'Please log in to start a session.');
       return;
@@ -65,13 +93,13 @@ export default function Marketplace() {
     } finally {
       setConnectingId(null);
     }
-  };
+  }, [user]);
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = React.useCallback(async () => {
     await vpnService.disconnect();
     setActiveSessionId(null);
     Alert.alert('Disconnected', 'Your encrypted session has ended.');
-  };
+  }, []);
 
   if (loading && sellers.length === 0) {
     return (

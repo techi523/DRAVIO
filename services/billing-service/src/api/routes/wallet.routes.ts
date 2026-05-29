@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { walletRepository } from '../../repositories/wallet.repository.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import { pool } from '../../db/client.js';
+import { sessionRepository } from '../../repositories/session.repository.js';
 
 export async function walletRoutes(fastify: FastifyInstance) {
   fastify.get('/v1/billing/balance', { 
@@ -47,6 +48,82 @@ export async function walletRoutes(fastify: FastifyInstance) {
     } catch (err: any) {
       fastify.log.error(err);
       return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+    }
+  });
+
+  // Combined transaction history (credits from topups + debits from sessions)
+  fastify.get('/v1/billing/transactions', { 
+    preHandler: [fastify.authenticate] 
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = (request.user as any).sub;
+    try {
+      const result = await pool.query(
+        `(
+          SELECT 
+            id, 'credit' AS type, amount_usd AS amount, 
+            'Wallet Top-up' AS description, status, created_at
+          FROM billing.invoices 
+          WHERE customer_id = $1 AND status = 'PAID'
+        )
+        UNION ALL
+        (
+          SELECT 
+            id, 'debit' AS type, cost_accumulated AS amount, 
+            'Data Session' AS description, status, started_at AS created_at
+          FROM billing.sessions 
+          WHERE customer_id = $1 AND cost_accumulated > 0
+        )
+        ORDER BY created_at DESC
+        LIMIT 50`,
+        [userId]
+      );
+      return sendSuccess(reply, result.rows);
+    } catch (err: any) {
+      fastify.log.error(err);
+      return sendSuccess(reply, []);
+    }
+  });
+
+  // Active sessions for the authenticated user
+  fastify.get('/v1/billing/sessions/active', { 
+    preHandler: [fastify.authenticate] 
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = (request.user as any).sub;
+    try {
+      const result = await pool.query(
+        `SELECT id, customer_id, hardware_id, session_token, bytes_used, 
+                cost_accumulated, status, started_at, ended_at
+         FROM billing.sessions 
+         WHERE customer_id = $1 AND status = 'ACTIVE'
+         ORDER BY started_at DESC`,
+        [userId]
+      );
+      return sendSuccess(reply, { sessions: result.rows });
+    } catch (err: any) {
+      fastify.log.error(err);
+      return sendSuccess(reply, { sessions: [] });
+    }
+  });
+
+  // Session history (all sessions including ended ones)
+  fastify.get('/v1/billing/sessions/history', { 
+    preHandler: [fastify.authenticate] 
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const userId = (request.user as any).sub;
+    try {
+      const result = await pool.query(
+        `SELECT id, customer_id, hardware_id, session_token, bytes_used, 
+                cost_accumulated, status, started_at, ended_at
+         FROM billing.sessions 
+         WHERE customer_id = $1
+         ORDER BY started_at DESC
+         LIMIT 50`,
+        [userId]
+      );
+      return sendSuccess(reply, { sessions: result.rows });
+    } catch (err: any) {
+      fastify.log.error(err);
+      return sendSuccess(reply, { sessions: [] });
     }
   });
 }

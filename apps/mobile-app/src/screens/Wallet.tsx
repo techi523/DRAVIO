@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform
+  ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, DeviceEventEmitter
 } from 'react-native';
 import { Colors } from '../theme/colors';
 import { api } from '../services/api';
@@ -43,14 +43,18 @@ export default function Wallet() {
     let cleanupSocket: () => void;
     onEvent('balance_update', (data: { balance: number }) => {
       setBalance(data.balance);
+      fetchWalletData(); // Refresh transaction list
     }).then(unsub => cleanupSocket = unsub);
+
+    const reconnectSub = DeviceEventEmitter.addListener('dravio:socket_connected', fetchWalletData);
 
     return () => {
       if (cleanupSocket) cleanupSocket();
+      reconnectSub.remove();
     };
   }, []);
 
-  const fetchWalletData = async () => {
+  const fetchWalletData = React.useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -72,9 +76,9 @@ export default function Wallet() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleDeposit = async () => {
+  const handleDeposit = React.useCallback(async () => {
     const amt = parseFloat(depositAmount);
     if (isNaN(amt) || amt <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount to deposit.');
@@ -83,22 +87,43 @@ export default function Wallet() {
 
     setDepositLoading(true);
     try {
-      await api.post('/wallet/deposit', { amount: amt });
+      const res = await api.post<any>('/payments/initiate', {
+        amount_usd: amt,
+        currency: 'KES',
+        method: 'MPESA',
+        idempotency_key: Math.random().toString(36).substring(7),
+      });
       setShowDeposit(false);
       Alert.alert(
         'STK Push Sent',
         'Please complete the transaction by entering your M-Pesa PIN on your phone.'
       );
-      // Re-fetch to synchronize state
-      setTimeout(fetchWalletData, 5000);
+      
+      // Poll for payment completion
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        try {
+          const status = await api.get<any>(`/payments/${res.payment_id}/status`);
+          if (status.status === 'COMPLETED') {
+            clearInterval(interval);
+            Alert.alert('Success', 'Payment received! Wallet updated.');
+            fetchWalletData();
+          } else if (status.status === 'FAILED' || attempts > 30) {
+            clearInterval(interval);
+            Alert.alert('Failed', 'Payment failed or timed out. Please try again.');
+          }
+        } catch {}
+      }, 3000);
+      
     } catch (err: any) {
       Alert.alert('Deposit Failed', err.message || 'Could not initialize STK Push.');
     } finally {
       setDepositLoading(false);
     }
-  };
+  }, [depositAmount, fetchWalletData]);
 
-  const handleWithdraw = async () => {
+  const handleWithdraw = React.useCallback(async () => {
     const amt = parseFloat(withdrawAmount);
     if (isNaN(amt) || amt <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount to withdraw.');
@@ -114,14 +139,14 @@ export default function Wallet() {
     try {
       await api.post('/wallet/withdraw', { amount: amt });
       setShowWithdraw(false);
-      Alert.alert('Payout Requested', 'Your withdrawal request has been sent for instant processing.');
+      Alert.alert('Withdrawal Processing', 'Your funds are being transferred to your linked bank account.');
       fetchWalletData();
     } catch (err: any) {
-      Alert.alert('Withdrawal Failed', err.message || 'Payout request declined by bank gateway.');
+      Alert.alert('Withdrawal Failed', err.message || 'Could not process payout.');
     } finally {
       setWithdrawLoading(false);
     }
-  };
+  }, [withdrawAmount, balance, fetchWalletData]);
 
   if (loading) {
     return (

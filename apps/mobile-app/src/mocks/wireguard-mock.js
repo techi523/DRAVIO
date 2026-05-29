@@ -5,15 +5,28 @@
  */
 const WireguardMock = {
   initialize: async () => {
-    console.log('[WireGuard Mock] initialize() called - native module not available in Expo Go/Web.');
+    if (!__DEV__) {
+      throw new Error('[DRAVIO FATAL] WireGuard mock invoked in a PRODUCTION build. Native module missing.');
+    }
+    console.warn('[WireGuard Mock] initialize() called - native module not available in Expo Go/Web.');
   },
   connect: async (config) => {
-    console.log('[WireGuard Mock] connect() called with server:', config?.serverAddress);
+    if (!__DEV__) {
+      throw new Error('[DRAVIO FATAL] WireGuard mock invoked in a PRODUCTION build. Native module missing.');
+    }
+    console.warn('[WireGuard Mock] connect() called with server:', config?.serverAddress);
+    return true; // Simulate success in dev
   },
   disconnect: async () => {
-    console.log('[WireGuard Mock] disconnect() called.');
+    if (!__DEV__) {
+      throw new Error('[DRAVIO FATAL] WireGuard mock invoked in a PRODUCTION build. Native module missing.');
+    }
+    console.warn('[WireGuard Mock] disconnect() called.');
   },
   getStatus: async () => {
+    if (!__DEV__) {
+      return { status: 'disconnected' };
+    }
     return { status: 'disconnected' };
   },
 };

@@ -51,9 +51,9 @@ export const VpnManager = {
 
       console.log('VpnManager: Connected.');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('VpnManager: Connection failed:', error);
-      return false;
+      throw error;
     }
   },
 

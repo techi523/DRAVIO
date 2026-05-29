@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, Platform, DeviceEventEmitter } from 'react-native';
 import io, { type Socket } from 'socket.io-client';
 import { storage } from './storage';
 
@@ -23,35 +23,44 @@ const resolveWsUrl = (): string => {
 const WS_URL = resolveWsUrl();
 
 let socket: Socket | null = null;
+let socketPromise: Promise<Socket> | null = null;
 
 export const getSocket = async (): Promise<Socket> => {
   if (socket?.connected) return socket;
+  if (socket) return socket; // Return connecting socket
+  if (socketPromise) return socketPromise;
 
-  const token = await storage.getItem('dravio_token');
+  socketPromise = (async () => {
+    const token = await storage.getItem('dravio_token');
 
-  socket = io(WS_URL, {
-    auth: { token },
-    reconnection: true,
-    reconnectionAttempts: 10,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
-    timeout: 10000,
-    transports: ['websocket'],
-  });
+    socket = io(WS_URL, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
+      timeout: 10000,
+      transports: ['websocket'],
+    });
 
-  socket.on('connect', () => {
-    console.log('[DRAVIO] WebSocket connected');
-  });
+    socket.on('connect', () => {
+      console.log('[DRAVIO] WebSocket connected');
+      DeviceEventEmitter.emit('dravio:socket_connected');
+    });
 
-  socket.on('connect_error', (error: any) => {
-    if (__DEV__) console.warn('[DRAVIO] Socket error:', error.message);
-  });
+    socket.on('connect_error', (error: any) => {
+      if (__DEV__) console.warn('[DRAVIO] Socket error:', error.message);
+    });
 
-  socket.on('disconnect', (reason: any) => {
-    if (__DEV__) console.log('[DRAVIO] Socket disconnected:', reason);
-  });
+    socket.on('disconnect', (reason: any) => {
+      if (__DEV__) console.log('[DRAVIO] Socket disconnected:', reason);
+    });
 
-  return socket;
+    socketPromise = null;
+    return socket;
+  })();
+
+  return socketPromise;
 };
 
 export const disconnectSocket = () => {
@@ -72,3 +81,6 @@ export const subscribeToEarnings = (callback: (data: { total: number }) => void)
 
 export const subscribeToBillingAlerts = (callback: (data: { type: string; message: string }) => void) =>
   onEvent('billing_alert', callback);
+
+export const subscribeToPeerUpdates = (callback: (data: any) => void) =>
+  onEvent('peer_update', callback);

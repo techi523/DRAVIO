@@ -4,6 +4,8 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ToastProvider } from "@/components/Toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 import "./globals.css";
 
 function NavBar() {
@@ -41,7 +43,7 @@ function NavBar() {
               isActive("/session") ? "text-primary" : ""
             }`}
           >
-            Active Sessions
+            Sessions
             <span
               className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all ${
                 isActive("/session") ? "w-full" : "w-0 group-hover:w-full"
@@ -49,19 +51,34 @@ function NavBar() {
             />
           </a>
           {user && (
-            <a
-              href="/wallet"
-              className={`hover:text-primary transition-all duration-300 relative group ${
-                isActive("/wallet") ? "text-primary" : ""
-              }`}
-            >
-              Wallet
-              <span
-                className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all ${
-                  isActive("/wallet") ? "w-full" : "w-0 group-hover:w-full"
+            <>
+              <a
+                href="/wallet"
+                className={`hover:text-primary transition-all duration-300 relative group ${
+                  isActive("/wallet") ? "text-primary" : ""
                 }`}
-              />
-            </a>
+              >
+                Wallet
+                <span
+                  className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all ${
+                    isActive("/wallet") ? "w-full" : "w-0 group-hover:w-full"
+                  }`}
+                />
+              </a>
+              <a
+                href="/profile"
+                className={`hover:text-primary transition-all duration-300 relative group ${
+                  isActive("/profile") ? "text-primary" : ""
+                }`}
+              >
+                Profile
+                <span
+                  className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all ${
+                    isActive("/profile") ? "w-full" : "w-0 group-hover:w-full"
+                  }`}
+                />
+              </a>
+            </>
           )}
         </div>
 
@@ -70,8 +87,8 @@ function NavBar() {
             <div className="w-20 h-8 bg-white/5 rounded-full animate-pulse" />
           ) : user ? (
             <>
-              <span className="text-[11px] font-bold text-white/40 hidden md:block">
-                {user.email}
+              <span className="text-xs font-bold text-white/40 hidden md:block">
+                {user.profile?.full_name || user.email}
               </span>
               <button
                 id="nav-logout"
@@ -84,7 +101,8 @@ function NavBar() {
           ) : (
             <a
               href="/login"
-              className="bg-primary/10 border border-primary/30 text-primary px-8 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-primary hover:text-black transition-all duration-500 shadow-[0_0_15px_rgba(0,242,255,0.2)] active:scale-95"
+              className="bg-primary/10 border border-primary/30 text-primary px-8 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-primary hover:text-black transition-all duration-500 active:scale-95"
+              style={{ boxShadow: "0 0 15px rgba(0,242,255,0.2)" }}
             >
               Sign In
             </a>
@@ -106,8 +124,9 @@ export default function RootLayout({
         <title>DRAVIO | Global Data Marketplace</title>
         <meta
           name="description"
-          content="Secure, P2P high-speed data tunneling and session management."
+          content="Secure, P2P high-speed data tunneling and session management. Buy internet data from anyone, anywhere."
         />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -120,13 +139,16 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ToastProvider>
-          <AuthProvider>
-            <div className="mesh-bg" />
-            <NavBar />
-            <main className="pt-24 min-h-screen">{children}</main>
-          </AuthProvider>
-        </ToastProvider>
+        <ErrorBoundary>
+          <ToastProvider>
+            <AuthProvider>
+              <div className="mesh-bg" />
+              <NavBar />
+              <ConnectionStatus />
+              <main className="pt-24 min-h-screen">{children}</main>
+            </AuthProvider>
+          </ToastProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

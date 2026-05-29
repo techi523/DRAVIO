@@ -44,13 +44,16 @@ class VpnService {
       this.lastBytesIn = 0;
       this.lastBytesOut = 0;
 
+      // Persist active session ID for crash recovery
+      import('./storage').then(m => m.storage.setItem('dravio_active_session', sessionId));
+
       this.startTracking();
       this.notifyListeners();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       this.stats.status = 'disconnected';
       this.notifyListeners();
-      return false;
+      throw error;
     }
   }
 
@@ -63,7 +66,28 @@ class VpnService {
     }
     this.stats.status = 'disconnected';
     this.sessionId = null;
+    import('./storage').then(m => m.storage.deleteItem('dravio_active_session'));
     this.notifyListeners();
+  }
+
+  async recoverSession(): Promise<boolean> {
+    try {
+      const status = await VpnManager.getStatus();
+      if (status && status.toUpperCase() === 'CONNECTED') {
+        const { storage } = await import('./storage');
+        const savedSessionId = await storage.getItem('dravio_active_session');
+        if (savedSessionId) {
+          this.sessionId = savedSessionId;
+          this.stats.status = 'connected';
+          this.startTracking();
+          this.notifyListeners();
+          return true;
+        }
+      }
+    } catch (_e) {
+      // Ignored
+    }
+    return false;
   }
 
   private startTracking() {

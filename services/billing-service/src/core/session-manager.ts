@@ -9,7 +9,7 @@ export class SessionManager {
    * Initializes a session, locks an escrow limit (optional but recommended),
    * and authorizes the hardware layer to route packets.
    */
-  async startSession(userId: string, hardwareId: string, pricePerMb: number, sellerId: string): Promise<string> {
+  async startSession(userId: string, hardwareId: string, pricePerMb: number, sellerId: string): Promise<{sessionToken: string; vpnConfig: string}> {
     const liveBalance = await walletRepository.getBalance(userId);
     
     // Hard constraint - prevent connection if broke
@@ -17,7 +17,19 @@ export class SessionManager {
       throw new Error('INSUFFICIENT_FUNDS');
     }
 
-    const sessionToken = uuidv4();
+    const sessionUrl = process.env.LOCAL_DEV === 'true' ? 'http://localhost:3005/v1/sessions' : 'http://session-service:3005/v1/sessions';
+    const res = await fetch(sessionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buyer_id: userId, seller_id: sellerId || hardwareId, region: 'auto' })
+    });
+
+    if (!res.ok) {
+      throw new Error('FAILED_TO_PROVISION_VPN_TUNNEL');
+    }
+    const data = await res.json();
+    const sessionToken = data.session_id;
+    const vpnConfig = data.vpn_config;
 
     // 1. Persist audit trail in relational DB
     await sessionRepository.createSession(userId, hardwareId, sessionToken);
@@ -31,7 +43,7 @@ export class SessionManager {
     });
 
     console.log(`[SessionManager] Session ${sessionToken} authorized for hardware ${hardwareId} with seller ${sellerId}`);
-    return sessionToken;
+    return { sessionToken, vpnConfig };
   }
 
   /**

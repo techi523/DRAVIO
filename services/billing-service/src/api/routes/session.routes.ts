@@ -9,8 +9,8 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     const userId = (request.user as any).sub;
 
     try {
-      const sessionToken = await sessionManager.startSession(userId, hardwareId, Number(pricePerMb), sellerId || '');
-      return reply.send({ success: true, sessionToken });
+      const result = await sessionManager.startSession(userId, hardwareId, Number(pricePerMb), sellerId || '');
+      return reply.send({ success: true, sessionToken: result.sessionToken, vpn_config: result.vpnConfig });
     } catch (err: any) {
       if (err.message === 'INSUFFICIENT_FUNDS') {
         return reply.status(402).send({ success: false, error: 'INSUFFICIENT_FUNDS', message: 'Wallet balance depleted' });
