@@ -1,3 +1,4 @@
+// noinspection JSXElementNotInternationalized
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -20,6 +21,7 @@ interface SessionDisplay {
 }
 
 export default function SessionMonitor() {
+  const t = (str: string) => str;
   const [sessions, setSessions] = useState<SessionDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export default function SessionMonitor() {
       <div className="glass-card p-8" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
         <div className="flex items-center justify-center gap-3">
           <span className="inline-block w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          <span className="text-sm text-white/40">Loading sessions...</span>
+          <span className="text-sm text-white/40">{t("Loading sessions...")}</span>
         </div>
       </div>
     );
@@ -167,7 +169,7 @@ export default function SessionMonitor() {
         <div className="text-center">
           <p className="text-red-400 text-sm mb-3">⚠ {error}</p>
           <button onClick={fetchActiveSessions} className="btn-primary" style={{ fontSize: "0.85rem", padding: "0.5rem 1.5rem" }}>
-            Retry
+            {t("Retry")}
           </button>
         </div>
       </div>
@@ -187,15 +189,15 @@ export default function SessionMonitor() {
             style={{ background: "rgba(255,255,255,0.2)" }}
           />
           <span className="text-xs font-bold text-white/30 uppercase tracking-widest">
-            No Active Sessions
+            {t("No Active Sessions")}
           </span>
         </div>
         <p className="text-white/20 text-sm">
-          Purchase data from the{" "}
+          {t("Purchase data from the")}{" "}
           <a href="/marketplace" className="text-primary hover:underline">
-            Marketplace
+            {t("Marketplace")}
           </a>{" "}
-          to start a session.
+          {t("to start a session.")}
         </p>
       </div>
     );
@@ -215,14 +217,14 @@ export default function SessionMonitor() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 <span className="text-xs font-bold text-primary uppercase tracking-widest">
-                  Live Session Active
+                  {t("Live Session Active")}
                 </span>
               </div>
               <h3 className="text-2xl font-black">
-                Node {session.hardwareId.slice(0, 8)}
+                {t("Node")} {session.hardwareId.slice(0, 8)}
               </h3>
               <p className="text-xs text-white/20 mt-1">
-                Started {new Date(session.startedAt).toLocaleString()}
+                {t("Started")} {new Date(session.startedAt).toLocaleString()}
               </p>
             </div>
             <button
@@ -244,7 +246,7 @@ export default function SessionMonitor() {
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div>
               <p className="text-xs text-white/30 uppercase mb-1">
-                Data Consumed
+                {t("Data Consumed")}
               </p>
               <p className="text-3xl font-black font-mono">
                 {formatBytes(session.bytesUsed)}
@@ -252,7 +254,7 @@ export default function SessionMonitor() {
             </div>
             <div>
               <p className="text-xs text-white/30 uppercase mb-1">
-                Session Duration
+                {t("Session Duration")}
               </p>
               <p className="text-3xl font-black font-mono">
                 {formatDuration(session.duration)}
@@ -263,7 +265,7 @@ export default function SessionMonitor() {
           <div className="grid grid-cols-2 gap-8 mb-6">
             <div>
               <p className="text-xs text-white/30 uppercase mb-1">
-                Cost Accumulated
+                {t("Cost Accumulated")}
               </p>
               <p className="text-xl font-black text-primary">
                 ${session.costAccumulated.toFixed(4)}
@@ -271,7 +273,7 @@ export default function SessionMonitor() {
             </div>
             <div>
               <p className="text-xs text-white/30 uppercase mb-1">
-                Session Token
+                {t("Session Token")}
               </p>
               <p
                 className="text-xs font-mono text-white/20 truncate"

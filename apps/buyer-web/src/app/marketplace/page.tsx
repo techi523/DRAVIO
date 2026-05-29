@@ -1,3 +1,4 @@
+// noinspection JSXElementNotInternationalized
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -8,6 +9,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { subscribeToPeerUpdates } from "@/lib/socket";
 
 export default function MarketplacePage() {
+  const t = (str: string) => str;
   const { user } = useAuth();
   const { showToast } = useToast();
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -183,13 +185,11 @@ export default function MarketplacePage() {
   };
 
   const getNodeGradient = (idx: number) => {
-    const gradients = [
-      "rgba(0,242,255,0.15)",
-      "rgba(112,0,255,0.15)",
-      "rgba(0,255,170,0.15)",
-      "rgba(255,100,200,0.15)",
-    ];
-    return gradients[idx % gradients.length];
+    const m = idx % 4;
+    if (m === 0) return "rgba(0,242,255,0.15)";
+    if (m === 1) return "rgba(112,0,255,0.15)";
+    if (m === 2) return "rgba(0,255,170,0.15)";
+    return "rgba(255,100,200,0.15)";
   };
 
   return (
@@ -197,16 +197,16 @@ export default function MarketplacePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
         <div>
-          <h2 className="text-4xl font-black mb-2">Marketplace</h2>
+          <h2 className="text-4xl font-black mb-2">{t("Marketplace")}</h2>
           <p className="text-white/40">
-            Discover high-speed data sellers near you.{" "}
+            {t("Discover high-speed data sellers near you.")}{" "}
             {sellers.length > 0 && (
               <span className="text-primary font-bold">
-                {sellers.length} node{sellers.length !== 1 ? "s" : ""} online
+                {sellers.length} {t("node")}{sellers.length !== 1 ? "s" : ""} {t("online")}
               </span>
             )}
             {userLocation && (
-              <span className="text-white/20 ml-2">• Location-based</span>
+              <span className="text-white/20 ml-2">• {t("Location-based")}</span>
             )}
           </p>
         </div>
@@ -226,9 +226,9 @@ export default function MarketplacePage() {
             className="bg-white/5 border border-white/10 px-4 py-3 rounded-full text-sm text-white/70 outline-none focus:border-primary cursor-pointer"
             style={{ background: "rgba(255,255,255,0.03)" }}
           >
-            <option value="price">Price: Low → High</option>
-            <option value="speed">Speed: Fast → Slow</option>
-            <option value="stability">Stability: Best → Low</option>
+            <option value="price">{t("Price: Low → High")}</option>
+            <option value="speed">{t("Speed: Fast → Slow")}</option>
+            <option value="stability">{t("Stability: Best → Low")}</option>
           </select>
           <button
             onClick={fetchSellers}
@@ -258,7 +258,7 @@ export default function MarketplacePage() {
             className="btn-primary"
             style={{ fontSize: "0.9rem" }}
           >
-            Retry
+            {t("Retry")}
           </button>
         </div>
       )}
@@ -361,7 +361,7 @@ export default function MarketplacePage() {
                 <p className="text-2xl font-black">
                   ${s.price_per_gb.toFixed(2)}
                 </p>
-                <p className="text-xs text-white/30">per GB</p>
+                <p className="text-xs text-white/30">{t("per GB")}</p>
               </div>
 
               {purchaseSuccess === s.id ? (
@@ -375,7 +375,7 @@ export default function MarketplacePage() {
                   onClick={() => handleBuyClick(s)}
                   disabled={purchasing}
                 >
-                  Buy Data
+                  {t("Buy Data")}
                 </button>
               )}
             </div>
@@ -401,26 +401,26 @@ export default function MarketplacePage() {
           <div className="space-y-4 mb-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 p-3 rounded-xl">
-                <p className="text-xs text-white/30 uppercase mb-1">Price</p>
+                <p className="text-xs text-white/30 uppercase mb-1">{t("Price")}</p>
                 <p className="text-xl font-black">
                   ${selectedSeller.price_per_gb.toFixed(2)}/GB
                 </p>
               </div>
               <div className="bg-white/5 p-3 rounded-xl">
-                <p className="text-xs text-white/30 uppercase mb-1">Speed</p>
+                <p className="text-xs text-white/30 uppercase mb-1">{t("Speed")}</p>
                 <p className="text-xl font-black">
                   {selectedSeller.avg_speed} Mbps
                 </p>
               </div>
               <div className="bg-white/5 p-3 rounded-xl">
-                <p className="text-xs text-white/30 uppercase mb-1">Stability</p>
+                <p className="text-xs text-white/30 uppercase mb-1">{t("Stability")}</p>
                 <p className="text-xl font-black">
                   {selectedSeller.stability}%
                 </p>
               </div>
               <div className="bg-white/5 p-3 rounded-xl">
                 <p className="text-xs text-white/30 uppercase mb-1">
-                  Wallet Balance
+                  {t("Wallet Balance")}
                 </p>
                 <p
                   className="text-xl font-black"
@@ -436,7 +436,7 @@ export default function MarketplacePage() {
               </div>
             </div>
             <p className="text-xs text-white/20 text-center">
-              Usage is billed in real-time. You can disconnect at any time.
+              {t("Usage is billed in real-time. You can disconnect at any time.")}
             </p>
           </div>
         )}

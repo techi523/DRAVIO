@@ -225,7 +225,7 @@ export const subscribeToMeteringUpdates = (
 ) => onSocketEvent("metering_update", callback);
 
 export const subscribeToPeerUpdates = (
-  callback: (data: { sellerId: string; status: string }) => void
+  callback: (data: { sellerId: string; status: string; sellerData?: any }) => void
 ) => onSocketEvent("peer_update", callback);
 
 export const subscribeToSessionStarted = (

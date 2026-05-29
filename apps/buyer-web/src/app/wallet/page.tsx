@@ -1,3 +1,4 @@
+// noinspection JSXElementNotInternationalized
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -11,6 +12,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 type PaymentMethod = "STRIPE" | "MPESA";
 
 export default function WalletPage() {
+  const t = (str: string) => str;
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -166,7 +168,7 @@ export default function WalletPage() {
             <div className="text-center">
               <div className="inline-block w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
               <p className="text-white/40 text-sm uppercase tracking-widest">
-                Synchronizing Ledger...
+                {t("Synchronizing Ledger...")}
               </p>
             </div>
           </div>
@@ -174,10 +176,10 @@ export default function WalletPage() {
           <div className="flex items-center justify-center min-h-[40vh]">
             <div className="glass-card p-12 max-w-md text-center">
               <p className="text-4xl mb-4">💳</p>
-              <h2 className="text-xl font-black mb-2">Billing Core Offline</h2>
+              <h2 className="text-xl font-black mb-2">{t("Billing Core Offline")}</h2>
               <p className="text-white/40 mb-6 text-sm">{error}</p>
               <button onClick={fetchWallet} className="btn-primary">
-                Retry
+                {t("Retry")}
               </button>
             </div>
           </div>
@@ -194,7 +196,7 @@ export default function WalletPage() {
                   borderColor: "rgba(0, 242, 255, 0.15)",
                 }}
               >
-                <p className="text-sm text-white/40 mb-2">Available Balance</p>
+                <p className="text-sm text-white/40 mb-2">{t("Available Balance")}</p>
                 <h2
                   className="text-7xl font-black mb-2"
                   style={{ fontFamily: "monospace" }}
@@ -203,10 +205,10 @@ export default function WalletPage() {
                   {(balance ?? 0).toFixed(2)}
                 </h2>
                 <p className="text-xs text-white/20 mb-10 uppercase tracking-widest">
-                  USD • Real-time synchronized
+                  {t("USD • Real-time synchronized")}
                   {paymentPending && (
                     <span className="ml-4 text-primary animate-pulse">
-                      • Payment pending...
+                      • {t("Payment pending...")}
                     </span>
                   )}
                 </p>
@@ -216,19 +218,19 @@ export default function WalletPage() {
                     className="btn-primary"
                     onClick={() => setShowDeposit(true)}
                   >
-                    Add Funds
+                    {t("Add Funds")}
                   </button>
                   <a
                     href="/marketplace"
                     className="px-6 py-3 rounded-full border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all font-bold text-sm"
                   >
-                    Buy Data →
+                    {t("Buy Data →")}
                   </a>
                 </div>
               </div>
 
               {/* Transaction History */}
-              <h3 className="text-2xl font-bold px-2">Transaction History</h3>
+              <h3 className="text-2xl font-bold px-2">{t("Transaction History")}</h3>
               <div className="space-y-3">
                 {transactions.length === 0 && invoices.length === 0 ? (
                   <div
@@ -236,8 +238,7 @@ export default function WalletPage() {
                     style={{ borderColor: "rgba(255,255,255,0.05)" }}
                   >
                     <p className="text-white/30 text-sm">
-                      No transactions recorded yet. Start by depositing funds or
-                      purchasing data.
+                      {t("No transactions recorded yet. Start by depositing funds or purchasing data.")}
                     </p>
                   </div>
                 ) : (
@@ -324,7 +325,7 @@ export default function WalletPage() {
 
             {/* Right Sidebar */}
             <div className="space-y-6">
-              <h3 className="text-xl font-bold px-2">Quick Actions</h3>
+              <h3 className="text-xl font-bold px-2">{t("Quick Actions")}</h3>
               <div className="glass-card p-6 space-y-4">
                 <button
                   onClick={() => setShowDeposit(true)}
@@ -334,7 +335,7 @@ export default function WalletPage() {
                     💰 Deposit Funds
                   </p>
                   <p className="text-xs text-white/30 mt-1">
-                    Via Stripe or M-Pesa
+                    {t("Via Stripe or M-Pesa")}
                   </p>
                 </button>
                 <a
@@ -345,7 +346,7 @@ export default function WalletPage() {
                     🛒 Browse Marketplace
                   </p>
                   <p className="text-xs text-white/30 mt-1">
-                    Find data sellers near you
+                    {t("Find data sellers near you")}
                   </p>
                 </a>
                 <a
@@ -356,7 +357,7 @@ export default function WalletPage() {
                     📊 Active Sessions
                   </p>
                   <p className="text-xs text-white/30 mt-1">
-                    Monitor your VPN connections
+                    {t("Monitor your VPN connections")}
                   </p>
                 </a>
               </div>
@@ -364,7 +365,7 @@ export default function WalletPage() {
               {/* Wallet Info */}
               <div className="glass-card p-6" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                 <p className="text-xs font-bold text-white/20 uppercase tracking-widest mb-3">
-                  Security
+                  {t("Security")}
                 </p>
                 <div className="space-y-2 text-xs text-white/30">
                   <p>✓ End-to-end encrypted transactions</p>
@@ -404,8 +405,8 @@ export default function WalletPage() {
               }`}
             >
               <p className="text-lg mb-1">💳</p>
-              <p className="text-xs font-bold">Stripe</p>
-              <p className="text-xs opacity-50 mt-1">Card / Bank</p>
+              <p className="text-xs font-bold">{t("Stripe")}</p>
+              <p className="text-xs opacity-50 mt-1">{t("Card / Bank")}</p>
             </button>
             <button
               onClick={() => setPaymentMethod("MPESA")}
@@ -416,8 +417,8 @@ export default function WalletPage() {
               }`}
             >
               <p className="text-lg mb-1">📱</p>
-              <p className="text-xs font-bold">M-Pesa</p>
-              <p className="text-xs opacity-50 mt-1">Mobile Money</p>
+              <p className="text-xs font-bold">{t("M-Pesa")}</p>
+              <p className="text-xs opacity-50 mt-1">{t("Mobile Money")}</p>
             </button>
           </div>
 

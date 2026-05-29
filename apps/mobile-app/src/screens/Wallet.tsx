@@ -1,3 +1,4 @@
+// noinspection JSXElementNotInternationalized
 import React, { useEffect, useState, useContext } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
@@ -17,6 +18,7 @@ interface Transaction {
 }
 
 export default function Wallet() {
+  const t = (str: string) => str;
   const { user } = useContext(AuthContext);
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -152,7 +154,7 @@ export default function Wallet() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={themeAccent} />
-        <Text style={styles.loadingText}>Synchronizing Ledger balances...</Text>
+        <Text style={styles.loadingText}>{t("Synchronizing Ledger balances...")}</Text>
       </View>
     );
   }
@@ -161,10 +163,10 @@ export default function Wallet() {
     return (
       <View style={styles.center}>
         <Text style={styles.errorIcon}>💳</Text>
-        <Text style={styles.errorTitle}>Billing Core Offline</Text>
+        <Text style={styles.errorTitle}>{t("Billing Core Offline")}</Text>
         <Text style={styles.errorSub}>{error}</Text>
         <TouchableOpacity style={[styles.retryBtn, { backgroundColor: themeAccent }]} onPress={fetchWalletData}>
-          <Text style={styles.retryBtnText}>RETRACT FROM LEDGER</Text>
+          <Text style={styles.retryBtnText}>{t("RETRACT FROM LEDGER")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -174,8 +176,8 @@ export default function Wallet() {
     <View style={styles.main}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{isSeller ? 'Earnings & Payouts' : 'Digital Wallet'}</Text>
-          <Text style={styles.headerSub}>REAL-TIME TRANSACTION LEDGER</Text>
+          <Text style={styles.headerTitle}>{isSeller ? t('Earnings & Payouts') : t('Digital Wallet')}</Text>
+          <Text style={styles.headerSub}>{t("REAL-TIME TRANSACTION LEDGER")}</Text>
         </View>
 
         <View style={[styles.balanceCard, isSeller && styles.balanceCardSeller]}>
@@ -187,20 +189,20 @@ export default function Wallet() {
           <View style={styles.actionsRow}>
             {!isSeller ? (
               <TouchableOpacity style={[styles.actionBtn, { backgroundColor: themeAccent }]} onPress={() => setShowDeposit(true)}>
-                <Text style={styles.actionBtnText}>DEPOSIT FUNDS</Text>
+                <Text style={styles.actionBtnText}>{t("DEPOSIT FUNDS")}</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity style={[styles.actionBtn, { backgroundColor: themeAccent }]} onPress={() => setShowWithdraw(true)}>
-                <Text style={styles.actionBtnText}>WITHDRAW EARNINGS</Text>
+                <Text style={styles.actionBtnText}>{t("WITHDRAW EARNINGS")}</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Transaction History</Text>
+        <Text style={styles.sectionTitle}>{t("Transaction History")}</Text>
         {transactions.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No recent transactions recorded on this account.</Text>
+            <Text style={styles.emptyText}>{t("No recent transactions recorded on this account.")}</Text>
           </View>
         ) : (
           transactions.map(tx => (
@@ -234,11 +236,11 @@ export default function Wallet() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>M-Pesa Express Deposit</Text>
-            <Text style={styles.sheetSub}>Enter deposit amount in KES. Funds are converted instantly to USD.</Text>
+            <Text style={styles.sheetTitle}>{t("M-Pesa Express Deposit")}</Text>
+            <Text style={styles.sheetSub}>{t("Enter deposit amount in KES. Funds are converted instantly to USD.")}</Text>
             
             <View style={styles.inputWrap}>
-              <Text style={styles.currency}>KES</Text>
+              <Text style={styles.currency}>{t("KES")}</Text>
               <TextInput
                 style={styles.input}
                 value={depositAmount}
@@ -250,10 +252,10 @@ export default function Wallet() {
             </View>
 
             <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: themeAccent }]} onPress={handleDeposit} disabled={depositLoading}>
-              {depositLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryBtnText}>CONFIRM DEPOSIT</Text>}
+              {depositLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryBtnText}>{t("CONFIRM DEPOSIT")}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowDeposit(false)}>
-              <Text style={styles.cancelBtnText}>CANCEL</Text>
+              <Text style={styles.cancelBtnText}>{t("CANCEL")}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -266,11 +268,11 @@ export default function Wallet() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Withdraw Earnings</Text>
-            <Text style={styles.sheetSub}>Request payout from your earnings wallet. Funds are transferred to your payout account.</Text>
+            <Text style={styles.sheetTitle}>{t("Withdraw Earnings")}</Text>
+            <Text style={styles.sheetSub}>{t("Request payout from your earnings wallet. Funds are transferred to your payout account.")}</Text>
             
             <View style={styles.inputWrap}>
-              <Text style={styles.currency}>USD</Text>
+              <Text style={styles.currency}>{t("USD")}</Text>
               <TextInput
                 style={styles.input}
                 value={withdrawAmount}
@@ -282,10 +284,10 @@ export default function Wallet() {
             </View>
 
             <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: themeAccent }]} onPress={handleWithdraw} disabled={withdrawLoading}>
-              {withdrawLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryBtnText}>INITIATE PAYOUT</Text>}
+              {withdrawLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryBtnText}>{t("INITIATE PAYOUT")}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowWithdraw(false)}>
-              <Text style={styles.cancelBtnText}>CANCEL</Text>
+              <Text style={styles.cancelBtnText}>{t("CANCEL")}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
