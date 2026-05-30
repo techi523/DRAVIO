@@ -79,10 +79,10 @@ export default function MarketplacePage() {
         if (data.status === "offline") {
           return prev.filter((s) => s.id !== data.sellerId);
         }
-        
+
         // Handle online/heartbeat updates
         const existingIdx = prev.findIndex((s) => s.id === data.sellerId);
-        
+
         if (existingIdx !== -1) {
           // Update existing
           const next = [...prev];
@@ -307,11 +307,10 @@ export default function MarketplacePage() {
         {filteredSellers.map((s, idx) => (
           <div
             key={s.id}
-            className={`glass-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center group gap-4 ${
-              purchaseSuccess === s.id
+            className={`glass-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center group gap-4 ${purchaseSuccess === s.id
                 ? "border-green-500/50"
                 : ""
-            }`}
+              }`}
             style={{
               boxShadow:
                 purchaseSuccess === s.id
@@ -340,8 +339,8 @@ export default function MarketplacePage() {
                       s.stability >= 95
                         ? "text-green-400"
                         : s.stability >= 80
-                        ? "text-yellow-400"
-                        : "text-red-400"
+                          ? "text-yellow-400"
+                          : "text-red-400"
                     }
                   >
                     {s.stability}% Stable

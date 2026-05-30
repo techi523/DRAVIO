@@ -1,10 +1,5 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/login/page": "app/login/page.js",
-  "/marketplace/page": "app/marketplace/page.js",
-  "/session/page": "app/session/page.js",
   "/page": "app/page.js",
-  "/wallet/page": "app/wallet/page.js",
-  "/register/page": "app/register/page.js",
-  "/profile/page": "app/profile/page.js"
+  "/login/page": "app/login/page.js",
+  "/marketplace/page": "app/marketplace/page.js"
 }

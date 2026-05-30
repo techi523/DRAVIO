@@ -14,6 +14,14 @@ export interface Transaction {
 }
 
 export class PaymentRepository {
+  async findById(id: string): Promise<Transaction | null> {
+    const result = await pool.query(
+      'SELECT * FROM payments.transactions WHERE id = $1',
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
   async findByIdempotencyKey(key: string): Promise<Transaction | null> {
     const result = await pool.query(
       'SELECT * FROM payments.transactions WHERE idempotency_key = $1',

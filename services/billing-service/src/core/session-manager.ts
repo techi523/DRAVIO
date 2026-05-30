@@ -27,7 +27,7 @@ export class SessionManager {
     if (!res.ok) {
       throw new Error('FAILED_TO_PROVISION_VPN_TUNNEL');
     }
-    const data = await res.json();
+    const data = await res.json() as any;
     const sessionToken = data.session_id;
     const vpnConfig = data.vpn_config;
 
