@@ -63,6 +63,7 @@ export default function Input({
         }
       ]}>
         {leftElement && <View style={styles.leftElementContainer}>{leftElement}</View>}
+        {/* eslint-disable-next-line react/jsx-props-no-spreading */}
         <TextInput
           style={[
             styles.input,
@@ -74,7 +75,17 @@ export default function Input({
           secureTextEntry={isActuallySecure}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          {...props}
+          value={props.value}
+          onChangeText={props.onChangeText}
+          placeholder={props.placeholder}
+          keyboardType={props.keyboardType}
+          autoCapitalize={props.autoCapitalize}
+          autoCorrect={props.autoCorrect}
+          returnKeyType={props.returnKeyType}
+          accessibilityLabel={props.accessibilityLabel}
+          onSubmitEditing={props.onSubmitEditing}
+          autoFocus={props.autoFocus}
+          maxLength={props.maxLength}
         />
         {passwordToggle && (
           <TouchableOpacity
