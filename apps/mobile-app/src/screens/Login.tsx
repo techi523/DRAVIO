@@ -1,13 +1,16 @@
 import React, { useState, useContext } from 'react';
 import {
-  StyleSheet, View, Text, TextInput, TouchableOpacity,
+  StyleSheet, View, Text, TouchableOpacity,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { Colors } from '../theme/colors';
+import { useThemeColors } from '../theme/useThemeColors';
+import Input from '../components/Input';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
 
 export default function Login({ navigation }: any) {
+  const colors = useThemeColors();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,11 +49,11 @@ export default function Login({ navigation }: any) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={[styles.flex, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>DRAVIO</Text>
@@ -62,38 +65,29 @@ export default function Login({ navigation }: any) {
           </View>
         ) : null}
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>EMAIL</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="you@example.com"
-            placeholderTextColor={Colors.textMuted}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-            returnKeyType="next"
-            accessibilityLabel="Email address"
-            accessibilityRole="text"
-          />
-        </View>
+        <Input
+          label="EMAIL"
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoCorrect={false}
+          returnKeyType="next"
+          accessibilityLabel="Email address"
+        />
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>PASSWORD</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Your password"
-            placeholderTextColor={Colors.textMuted}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            returnKeyType="done"
-            onSubmitEditing={handleLogin}
-            accessibilityLabel="Password"
-            accessibilityRole="text"
-          />
-        </View>
+        <Input
+          label="PASSWORD"
+          placeholder="Your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          passwordToggle
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
+          accessibilityLabel="Password"
+        />
 
         <TouchableOpacity
           style={[styles.btn, loading && styles.btnDisabled]}

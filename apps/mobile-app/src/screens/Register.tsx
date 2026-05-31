@@ -1,9 +1,11 @@
 import React, { useState, useContext } from 'react';
 import {
-  StyleSheet, View, Text, TextInput, TouchableOpacity,
+  StyleSheet, View, Text, TouchableOpacity,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { Colors } from '../theme/colors';
+import { useThemeColors } from '../theme/useThemeColors';
+import Input from '../components/Input';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
 
@@ -15,6 +17,7 @@ function validatePassword(password: string): string | null {
 }
 
 export default function Register({ navigation }: any) {
+  const colors = useThemeColors();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
@@ -73,11 +76,11 @@ export default function Register({ navigation }: any) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={[styles.flex, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>DRAVIO</Text>
@@ -89,56 +92,57 @@ export default function Register({ navigation }: any) {
           </View>
         ) : null}
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>EMAIL</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="you@example.com"
-            placeholderTextColor={Colors.textMuted}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-            accessibilityLabel="Email address"
-          />
-        </View>
+        <Input
+          label="EMAIL"
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoCorrect={false}
+          accessibilityLabel="Email address"
+        />
+
+        <Input
+          label="PASSWORD"
+          placeholder="Min 8 chars, 1 uppercase, 1 number"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          passwordToggle
+          accessibilityLabel="Password"
+        />
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>PASSWORD</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Min 8 chars, 1 uppercase, 1 number"
-            placeholderTextColor={Colors.textMuted}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            accessibilityLabel="Password"
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>I WANT TO</Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>I WANT TO</Text>
           <View style={styles.roleToggles}>
             <TouchableOpacity
-              style={[styles.roleBtn, role === 'buyer' && styles.roleBtnActive]}
+              style={[
+                styles.roleBtn,
+                { backgroundColor: colors.surfaceMid, borderColor: colors.border },
+                role === 'buyer' && { borderColor: colors.primary, backgroundColor: 'rgba(0,242,255,0.08)' }
+              ]}
               onPress={() => setRole('buyer')}
               accessibilityLabel="Buy internet data"
               accessibilityRole="radio"
             >
               <Text style={styles.roleIcon}>📱</Text>
-              <Text style={[styles.roleBtnText, role === 'buyer' && styles.roleBtnTextActive]}>BUY DATA</Text>
-              <Text style={styles.roleDesc}>Use shared internet</Text>
+              <Text style={[styles.roleBtnText, { color: colors.textMuted }, role === 'buyer' && { color: colors.primary }]}>BUY DATA</Text>
+              <Text style={[styles.roleDesc, { color: colors.textMuted }]}>Use shared internet</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.roleBtn, role === 'seller' && styles.roleBtnActive]}
+              style={[
+                styles.roleBtn,
+                { backgroundColor: colors.surfaceMid, borderColor: colors.border },
+                role === 'seller' && { borderColor: colors.primary, backgroundColor: 'rgba(0,242,255,0.08)' }
+              ]}
               onPress={() => setRole('seller')}
               accessibilityLabel="Sell internet data"
               accessibilityRole="radio"
             >
               <Text style={styles.roleIcon}>💰</Text>
-              <Text style={[styles.roleBtnText, role === 'seller' && styles.roleBtnTextActive]}>SELL DATA</Text>
-              <Text style={styles.roleDesc}>Share & earn</Text>
+              <Text style={[styles.roleBtnText, { color: colors.textMuted }, role === 'seller' && { color: colors.primary }]}>SELL DATA</Text>
+              <Text style={[styles.roleDesc, { color: colors.textMuted }]}>Share & earn</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -150,16 +154,16 @@ export default function Register({ navigation }: any) {
           accessibilityLabel="Agree to Terms of Service and Privacy Policy"
           accessibilityRole="checkbox"
         >
-          <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+          <View style={[styles.checkbox, { borderColor: colors.border }, agreed && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
             {agreed && <Text style={styles.checkmark}>✓</Text>}
           </View>
-          <Text style={styles.termsText}>
+          <Text style={[styles.termsText, { color: colors.textMuted }]}>
             I agree to the{' '}
-            <Text style={styles.termsLink} onPress={() => navigation.navigate('Terms')}>
+            <Text style={[styles.termsLink, { color: colors.primary }]} onPress={() => navigation.navigate('Terms')}>
               Terms of Service
             </Text>
             {' '}and{' '}
-            <Text style={styles.termsLink} onPress={() => navigation.navigate('Privacy')}>
+            <Text style={[styles.termsLink, { color: colors.primary }]} onPress={() => navigation.navigate('Privacy')}>
               Privacy Policy
             </Text>
           </Text>

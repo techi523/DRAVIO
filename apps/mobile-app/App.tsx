@@ -1,10 +1,11 @@
 import React, { useContext } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, AuthContext } from './src/services/AuthContext';
 import { Colors } from './src/theme/colors';
+import { useThemeColors } from './src/theme/useThemeColors';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Screens
@@ -24,19 +25,20 @@ const Tab = createBottomTabNavigator();
 // 1. BUYER PORTAL TABS (Cyan Theme)
 // ----------------------------------------------------
 function BuyerTabs() {
+  const colors = useThemeColors();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.surfaceLow,
+          backgroundColor: colors.surfaceLow,
           borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.05)',
+          borderTopColor: colors.border,
           height: 80,
           paddingBottom: 20,
         },
-        tabBarActiveTintColor: Colors.primary, // Cyan
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: colors.primary, // Cyan
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '900' },
       }}
     >
@@ -66,19 +68,20 @@ function BuyerTabs() {
 // 2. SELLER PORTAL TABS (Emerald Success Green Theme)
 // ----------------------------------------------------
 function SellerTabs() {
+  const colors = useThemeColors();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.surfaceLow,
+          backgroundColor: colors.surfaceLow,
           borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.05)',
+          borderTopColor: colors.border,
           height: 80,
           paddingBottom: 20,
         },
-        tabBarActiveTintColor: Colors.success, // Emerald Green
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: colors.success, // Emerald Green
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '900' },
       }}
     >
@@ -154,33 +157,34 @@ function SellerStack() {
   );
 }
 
-const AppTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: Colors.primary,
-    background: Colors.background,
-    card: Colors.surfaceLow,
-    text: Colors.foreground,
-    border: 'rgba(255,255,255,0.05)',
-    notification: Colors.danger,
-  },
-  fonts: {
-    ...DarkTheme.fonts,
-    regular: { fontFamily: 'sans-serif', fontWeight: 'normal' as const },
-    medium: { fontFamily: 'sans-serif-medium', fontWeight: '500' as const },
-    bold: { fontFamily: 'sans-serif', fontWeight: 'bold' as const },
-    heavy: { fontFamily: 'sans-serif', fontWeight: '900' as const },
-  },
-};
-
 function Navigator() {
   const { user, loading } = useContext(AuthContext);
+  const colors = useThemeColors();
+
+  const AppTheme = {
+    ...DarkTheme, // Base off dark theme for fonts etc, but override colors completely
+    colors: {
+      ...DarkTheme.colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surfaceLow,
+      text: colors.foreground,
+      border: colors.border,
+      notification: colors.danger,
+    },
+    fonts: {
+      ...DarkTheme.fonts,
+      regular: { fontFamily: 'sans-serif', fontWeight: 'normal' as const },
+      medium: { fontFamily: 'sans-serif-medium', fontWeight: '500' as const },
+      bold: { fontFamily: 'sans-serif', fontWeight: 'bold' as const },
+      heavy: { fontFamily: 'sans-serif', fontWeight: '900' as const },
+    },
+  };
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }

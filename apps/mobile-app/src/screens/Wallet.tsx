@@ -2,9 +2,11 @@
 import React, { useEffect, useState, useContext } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, DeviceEventEmitter
+  ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, DeviceEventEmitter
 } from 'react-native';
 import { Colors } from '../theme/colors';
+import { useThemeColors } from '../theme/useThemeColors';
+import Input from '../components/Input';
 import { api } from '../services/api';
 import { onEvent } from '../services/socket';
 import { AuthContext } from '../services/AuthContext';
@@ -18,6 +20,7 @@ interface Transaction {
 }
 
 export default function Wallet() {
+  const colors = useThemeColors();
   const t = (str: string) => str;
   const { user } = useContext(AuthContext);
   const [balance, setBalance] = useState<number>(0);
@@ -152,7 +155,7 @@ export default function Wallet() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={themeAccent} />
         <Text style={styles.loadingText}>{t("Synchronizing Ledger balances...")}</Text>
       </View>
@@ -161,10 +164,10 @@ export default function Wallet() {
 
   if (error) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={styles.errorIcon}>💳</Text>
-        <Text style={styles.errorTitle}>{t("Billing Core Offline")}</Text>
-        <Text style={styles.errorSub}>{error}</Text>
+        <Text style={[styles.errorTitle, { color: colors.foreground }]}>{t("Billing Core Offline")}</Text>
+        <Text style={[styles.errorSub, { color: colors.textMuted }]}>{error}</Text>
         <TouchableOpacity style={[styles.retryBtn, { backgroundColor: themeAccent }]} onPress={fetchWalletData}>
           <Text style={styles.retryBtnText}>{t("RETRACT FROM LEDGER")}</Text>
         </TouchableOpacity>
@@ -173,18 +176,18 @@ export default function Wallet() {
   }
 
   return (
-    <View style={styles.main}>
+    <View style={[styles.main, { backgroundColor: colors.background }]}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{isSeller ? t('Earnings & Payouts') : t('Digital Wallet')}</Text>
-          <Text style={styles.headerSub}>{t("REAL-TIME TRANSACTION LEDGER")}</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{isSeller ? t('Earnings & Payouts') : t('Digital Wallet')}</Text>
+          <Text style={[styles.headerSub, { color: colors.textMuted }]}>{t("REAL-TIME TRANSACTION LEDGER")}</Text>
         </View>
 
-        <View style={[styles.balanceCard, isSeller && styles.balanceCardSeller]}>
-          <Text style={styles.balanceLabel}>
+        <View style={[styles.balanceCard, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }, isSeller && styles.balanceCardSeller]}>
+          <Text style={[styles.balanceLabel, { color: colors.textMuted }]}>
             {isSeller ? 'TOTAL EARNINGS' : 'AVAILABLE SPENDING BALANCE'}
           </Text>
-          <Text style={styles.balanceAmount}>${balance.toFixed(2)}</Text>
+          <Text style={[styles.balanceAmount, { color: colors.foreground }]}>${balance.toFixed(2)}</Text>
           
           <View style={styles.actionsRow}>
             {!isSeller ? (
@@ -199,14 +202,14 @@ export default function Wallet() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>{t("Transaction History")}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t("Transaction History")}</Text>
         {transactions.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>{t("No recent transactions recorded on this account.")}</Text>
+          <View style={[styles.emptyCard, { backgroundColor: colors.surfaceMid, borderColor: colors.border }]}>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t("No recent transactions recorded on this account.")}</Text>
           </View>
         ) : (
           transactions.map(tx => (
-            <View key={tx.id} style={styles.txItem}>
+            <View key={tx.id} style={[styles.txItem, { backgroundColor: colors.surfaceMid, borderColor: colors.border }]}>
               <View
                 style={[
                   styles.txIcon,
@@ -218,8 +221,8 @@ export default function Wallet() {
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.txDesc}>{tx.description}</Text>
-                <Text style={styles.txDate}>{new Date(tx.created_at).toLocaleDateString()} {new Date(tx.created_at).toLocaleTimeString()}</Text>
+                <Text style={[styles.txDesc, { color: colors.foreground }]}>{tx.description}</Text>
+                <Text style={[styles.txDate, { color: colors.textMuted }]}>{new Date(tx.created_at).toLocaleDateString()} {new Date(tx.created_at).toLocaleTimeString()}</Text>
               </View>
               <Text style={[styles.txAmount, { color: tx.type === 'credit' ? Colors.success : Colors.danger }]}>
                 {tx.type === 'credit' ? '+' : '-'}${tx.amount.toFixed(2)}
@@ -235,21 +238,18 @@ export default function Wallet() {
           style={styles.modalBackdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{t("M-Pesa Express Deposit")}</Text>
-            <Text style={styles.sheetSub}>{t("Enter deposit amount in KES. Funds are converted instantly to USD.")}</Text>
+          <View style={[styles.sheet, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }]}>
+            <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{t("M-Pesa Express Deposit")}</Text>
+            <Text style={[styles.sheetSub, { color: colors.textMuted }]}>{t("Enter deposit amount in KES. Funds are converted instantly to USD.")}</Text>
             
-            <View style={styles.inputWrap}>
-              <Text style={styles.currency}>{t("KES")}</Text>
-              <TextInput
-                style={styles.input}
-                value={depositAmount}
-                onChangeText={setDepositAmount}
-                keyboardType="numeric"
-                placeholderTextColor={Colors.textMuted}
-                autoFocus
-              />
-            </View>
+            <Input
+              value={depositAmount}
+              onChangeText={setDepositAmount}
+              keyboardType="numeric"
+              autoFocus
+              leftElement={<Text style={[styles.currency, { color: colors.foreground }]}>{t("KES")}</Text>}
+              style={{ fontSize: 24, fontWeight: '900' }}
+            />
 
             <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: themeAccent }]} onPress={handleDeposit} disabled={depositLoading}>
               {depositLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryBtnText}>{t("CONFIRM DEPOSIT")}</Text>}
@@ -267,21 +267,18 @@ export default function Wallet() {
           style={styles.modalBackdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{t("Withdraw Earnings")}</Text>
-            <Text style={styles.sheetSub}>{t("Request payout from your earnings wallet. Funds are transferred to your payout account.")}</Text>
+          <View style={[styles.sheet, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }]}>
+            <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{t("Withdraw Earnings")}</Text>
+            <Text style={[styles.sheetSub, { color: colors.textMuted }]}>{t("Request payout from your earnings wallet. Funds are transferred to your payout account.")}</Text>
             
-            <View style={styles.inputWrap}>
-              <Text style={styles.currency}>{t("USD")}</Text>
-              <TextInput
-                style={styles.input}
-                value={withdrawAmount}
-                onChangeText={setWithdrawAmount}
-                keyboardType="numeric"
-                placeholderTextColor={Colors.textMuted}
-                autoFocus
-              />
-            </View>
+            <Input
+              value={withdrawAmount}
+              onChangeText={setWithdrawAmount}
+              keyboardType="numeric"
+              autoFocus
+              leftElement={<Text style={[styles.currency, { color: colors.foreground }]}>{t("USD")}</Text>}
+              style={{ fontSize: 24, fontWeight: '900' }}
+            />
 
             <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: themeAccent }]} onPress={handleWithdraw} disabled={withdrawLoading}>
               {withdrawLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryBtnText}>{t("INITIATE PAYOUT")}</Text>}
