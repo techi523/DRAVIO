@@ -7,6 +7,7 @@ import { AuthProvider, AuthContext } from './src/services/AuthContext';
 import { Colors } from './src/theme/colors';
 import { useThemeColors } from './src/theme/useThemeColors';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import './src/i18n'; // Initialize i18n
 
 // Screens
 import Login from './src/screens/Login';

@@ -2,6 +2,10 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
+/**
+ * Admin Service PostgreSQL connection pool.
+ * Uses DATABASE_URL env var (standard format) or individual DB_* vars.
+ */
 export const pool = new Pool(
   process.env.DATABASE_URL
     ? { connectionString: process.env.DATABASE_URL }
@@ -13,3 +17,7 @@ export const pool = new Pool(
         database: process.env.DB_NAME || 'dravio_production',
       }
 );
+
+pool.on('error', (err) => {
+  console.error('[admin-service] Unexpected PostgreSQL error:', err);
+});

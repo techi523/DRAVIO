@@ -17,6 +17,7 @@ const resolveWsUrl = (): string => {
 
   if (__DEV__) return 'http://localhost:8080';
 
+  // Throws if the URL is not provided in env and we're not in dev mode
   throw new Error('[DRAVIO] EXPO_PUBLIC_WS_URL is not configured.');
 };
 
@@ -48,8 +49,16 @@ export const getSocket = async (): Promise<Socket> => {
       DeviceEventEmitter.emit('dravio:socket_connected');
     });
 
-    socket.on('connect_error', (error: any) => {
+    socket.on('connect_error', async (error: any) => {
       if (__DEV__) console.warn('[DRAVIO] Socket error:', error.message);
+      // Auto-reconnect with fresh token if auth failed or polling dropped
+      if (error.message.includes('401') || error.message.includes('Authentication') || error.message === 'xhr poll error') {
+         const latestToken = await storage.getItem('dravio_token');
+         if (latestToken && socket) {
+            socket.auth = { token: latestToken };
+            socket.connect();
+         }
+      }
     });
 
     socket.on('disconnect', (reason: any) => {

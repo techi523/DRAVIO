@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { storage } from './storage';
 import { api } from './api';
 
@@ -43,6 +44,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     loadStoredData();
+
+    const listener = DeviceEventEmitter.addListener('SESSION_EXPIRED', () => {
+      setToken(null);
+      setUser(null);
+    });
+
+    return () => {
+      listener.remove();
+    };
   }, []);
 
   const login = async (newToken: string, newUser: User) => {

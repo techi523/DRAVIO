@@ -108,9 +108,36 @@ fastify.get('/v1/payments/:id/status', { preHandler: [(req, reply) => fastify.au
   }
 });
 
+// Wallet deduct (internal endpoint called by billing service consumption processor)
+// NOTE: This is an internal route — should be secured with service-to-service auth in production.
+fastify.post('/v1/payments/wallet/deduct', async (request: FastifyRequest, reply: FastifyReply) => {
+  const { userId, amount, reason } = request.body as any;
+
+  if (!userId || !amount || typeof amount !== 'number' || amount <= 0) {
+    return sendError(reply, 'INVALID_DEDUCTION_PARAMS', 400);
+  }
+
+  try {
+    const { walletRepository } = await import('./repositories/wallet.deduct.js');
+    const result = await walletRepository.deductBalance(userId, amount);
+    return sendSuccess(reply, {
+      userId,
+      deducted: amount,
+      balance: result.new_balance,
+      reason: reason || 'Usage charge',
+    });
+  } catch (err: any) {
+    if (err.message === 'INSUFFICIENT_BALANCE') {
+      return sendSuccess(reply, { balance: 0, depleted: true });
+    }
+    fastify.log.error('[wallet/deduct]', err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || '3004');
+    const port = parseInt(process.env.PORT || '3005'); // Must match Docker: 3005:3005
     await fastify.listen({ port, host: '0.0.0.0' });
     console.log(`Payment service listening on port ${port}`);
   } catch (err) {

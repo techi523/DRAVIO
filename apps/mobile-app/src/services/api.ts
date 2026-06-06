@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, Platform, DeviceEventEmitter } from 'react-native';
 import { storage } from './storage';
 
 /**
@@ -80,6 +80,7 @@ async function refreshAccessToken(): Promise<string | null> {
       if (!response.ok) {
         await storage.deleteItem('dravio_token');
         await storage.deleteItem('dravio_user');
+        DeviceEventEmitter.emit('SESSION_EXPIRED');
         return null;
       }
 
@@ -101,7 +102,7 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(endpoint: string, options: RequestInit = {}, retries = 1): Promise<T> {
   let token = await storage.getItem('dravio_token');
 
   const headers = new Headers(options.headers);
@@ -135,6 +136,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       } else {
         await storage.deleteItem('dravio_token');
         await storage.deleteItem('dravio_user');
+        DeviceEventEmitter.emit('SESSION_EXPIRED');
       }
     }
 
@@ -154,6 +156,15 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     return json.data ?? json;
   } catch (error: any) {
     clearTimeout(timeout);
+    
+    // Network Resiliency: Retry once on Network/Timeout errors
+    if (retries > 0 && (error.name === 'AbortError' || error.message?.includes('Network request failed'))) {
+       if (__DEV__) console.warn(`[DRAVIO] Network request failed. Retrying... (${endpoint})`);
+       // Exponential backoff or simple delay
+       await new Promise(resolve => setTimeout(resolve, 1000));
+       return request<T>(endpoint, options, retries - 1);
+    }
+
     if (error.name === 'AbortError') {
       throw new Error('Request timed out. Please check your connection.');
     }

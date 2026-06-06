@@ -1,3 +1,4 @@
+import { useThemeColors } from '../theme/useThemeColors';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Colors } from '../theme/colors';
@@ -12,6 +13,9 @@ interface LogEvent {
 }
 
 export default function AdminDashboard() {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   const [telemetry, setTelemetry] = useState({
     activeNodes: 0,
     activeTunnels: 0,
@@ -109,7 +113,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.danger} />
+        <ActivityIndicator size="large" color={colors.danger} />
         <Text style={styles.loadingText}>Synchronizing Security Operations Center...</Text>
       </View>
     );
@@ -167,7 +171,7 @@ export default function AdminDashboard() {
           accessibilityRole="button"
         >
           {lockdownLoading ? (
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator color={colors.foreground} />
           ) : (
             <Text style={styles.lockdownBtnText}>
               {telemetry.lockdownActive ? 'DISENGAGE LOCKDOWN' : 'TRIGGER GLOBAL LOCKDOWN'}
@@ -189,7 +193,7 @@ export default function AdminDashboard() {
         </View>
         <View style={[styles.statCard, { width: '100%' }]}>
           <Text style={styles.statLabel}>TOTAL DATA ROUTED TODAY</Text>
-          <Text style={[styles.statVal, { color: Colors.primary }]}>
+          <Text style={[styles.statVal, { color: colors.primary }]}>
             {telemetry.dataSharedGb.toFixed(2)} GB
           </Text>
         </View>
@@ -230,18 +234,18 @@ export default function AdminDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   scrollContent: { padding: 24, paddingBottom: 60 },
   center: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
   },
   loadingText: {
-    color: Colors.textMuted,
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 16,
     letterSpacing: 1.5,
@@ -251,18 +255,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#FFF',
+    color: colors.foreground,
     letterSpacing: 1,
   },
   subTitle: {
     fontSize: 10,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     marginTop: 6,
     letterSpacing: 2,
     fontWeight: 'bold',
   },
   lockdownCard: {
-    backgroundColor: Colors.surfaceHigh,
+    backgroundColor: colors.surfaceHigh,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 24,
@@ -270,7 +274,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   lockdownCardActive: {
-    borderColor: Colors.danger,
+    borderColor: colors.danger,
     backgroundColor: 'rgba(255, 51, 102, 0.05)',
   },
   lockdownHeader: {
@@ -280,44 +284,44 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   lockdownIcon: { fontSize: 32 },
-  lockdownTitle: { fontSize: 16, fontWeight: '900', color: '#FFF', letterSpacing: 0.5 },
-  lockdownSub: { color: Colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  lockdownTitle: { fontSize: 16, fontWeight: '900', color: colors.foreground, letterSpacing: 0.5 },
+  lockdownSub: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   lockdownBtn: {
     padding: 18,
     borderRadius: 14,
     alignItems: 'center',
   },
   lockdownBtnActive: {
-    backgroundColor: Colors.success,
+    backgroundColor: colors.success,
   },
   lockdownBtnInactive: {
-    backgroundColor: Colors.danger,
+    backgroundColor: colors.danger,
   },
-  lockdownBtnText: { color: '#000', fontWeight: '900', fontSize: 14, letterSpacing: 1 },
+  lockdownBtnText: { color: colors.background, fontWeight: '900', fontSize: 14, letterSpacing: 1 },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '900',
-    color: Colors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 1.5,
     marginBottom: 16,
     textTransform: 'uppercase',
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 32 },
   statCard: {
-    backgroundColor: Colors.surfaceMid,
+    backgroundColor: colors.surfaceMid,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 16,
     width: '48%',
   },
-  statLabel: { fontSize: 8, color: Colors.textMuted, fontWeight: '900', letterSpacing: 1 },
-  statVal: { fontSize: 24, fontWeight: '900', color: '#FFF', marginTop: 8 },
+  statLabel: { fontSize: 8, color: colors.textMuted, fontWeight: '900', letterSpacing: 1 },
+  statVal: { fontSize: 24, fontWeight: '900', color: colors.foreground, marginTop: 8 },
   logContainer: {
     backgroundColor: '#020309',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   logHeader: {
@@ -326,22 +330,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surfaceLow,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surfaceLow,
   },
-  logHeaderTitle: { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
-  activePulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger },
+  logHeaderTitle: { color: colors.foreground, fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
+  activePulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger },
   logBody: { maxHeight: 250, padding: 16 },
-  emptyLog: { color: Colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 40 },
+  emptyLog: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 40 },
   logRow: { flexDirection: 'row', marginBottom: 10, gap: 8 },
-  logTime: { color: Colors.textMuted, fontFamily: 'monospace', fontSize: 12 },
-  logLevel: { color: Colors.primary, fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold' },
-  logWarn: { color: Colors.warning },
-  logCrit: { color: Colors.danger },
+  logTime: { color: colors.textMuted, fontFamily: 'monospace', fontSize: 12 },
+  logLevel: { color: colors.primary, fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold' },
+  logWarn: { color: colors.warning },
+  logCrit: { color: colors.danger },
   logMessage: { flex: 1, color: '#DDD', fontFamily: 'monospace', fontSize: 12 },
   errorIcon: { fontSize: 48, marginBottom: 16 },
-  errorTitle: { fontSize: 18, fontWeight: '900', color: '#FFF', marginBottom: 8 },
-  errorSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', marginBottom: 24 },
-  retryBtn: { backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
-  retryBtnText: { color: '#000', fontWeight: '900', fontSize: 13 },
+  errorTitle: { fontSize: 18, fontWeight: '900', color: colors.foreground, marginBottom: 8 },
+  errorSub: { fontSize: 13, color: colors.textMuted, textAlign: 'center', marginBottom: 24 },
+  retryBtn: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
+  retryBtnText: { color: colors.background, fontWeight: '900', fontSize: 13 },
 });

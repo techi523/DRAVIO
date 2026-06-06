@@ -24,6 +24,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
+    "@types/recharts": "^1.8.29",
     "autoprefixer": "^10.5.0",
     "eslint": "^9.16.0",
     "eslint-config-next": "15.1.0",

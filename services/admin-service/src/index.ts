@@ -49,8 +49,88 @@ async function init() {
   // Health check
   fastify.get('/health', async () => ({ status: 'ok', service: 'admin-service' }));
 
-  // ─── ADMIN ACTIONS (Modularized) ───
+  // ─── TELEMETRY: Mobile AdminDashboard ───────────────────────────────────────
+  // GET /admin/telemetry — returns aggregate system stats for mobile admin view
+  fastify.get('/admin/telemetry', {
+    preHandler: [requireRoles(['SUPER_ADMIN', 'SUPPORT_AGENT', 'SECURITY_ADMIN'])]
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
+    try {
+      // Aggregate from internal services in parallel
+      const [sessionsRes, nodesRes] = await Promise.allSettled([
+        axios.get(`${SERVICES.billing}/v1/billing/sessions/active`, {
+          headers: { authorization: req.headers.authorization || '' }
+        }),
+        axios.get(`${SERVICES.marketplace}/v1/marketplace/sellers`, {
+          headers: { authorization: req.headers.authorization || '' }
+        }),
+      ]);
 
+      const activeSessions = sessionsRes.status === 'fulfilled'
+        ? (sessionsRes.value.data?.data?.sessions?.length ?? 0) : 0;
+      const activeNodes = nodesRes.status === 'fulfilled'
+        ? (nodesRes.value.data?.data?.results?.length ?? 0) : 0;
+
+      return reply.send({
+        active_nodes: activeNodes,
+        active_tunnels: activeSessions,
+        total_bandwidth_gb: activeSessions * 0.25, // approximation until metering-service provides this
+        lockdown_active: (global as any).__dravio_lockdown__ ?? false,
+      });
+    } catch (err: any) {
+      fastify.log.error({ err }, '[admin/telemetry]');
+      return reply.send({ active_nodes: 0, active_tunnels: 0, total_bandwidth_gb: 0, lockdown_active: false });
+    }
+  });
+
+  // GET /admin/incidents — returns recent security incidents from audit log
+  fastify.get('/admin/incidents', {
+    preHandler: [requireRoles(['SUPER_ADMIN', 'SECURITY_ADMIN'])]
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { pool } = await import('./db/client.js');
+      const result = await pool.query(
+        `SELECT id, action AS description, actor_id, service, resource_type,
+                created_at, 'info' AS severity
+           FROM audit.audit_log
+          ORDER BY created_at DESC
+          LIMIT 50`
+      );
+      return reply.send(result.rows);
+    } catch (err: any) {
+      fastify.log.error({ err }, '[admin/incidents]');
+      return reply.send([]);
+    }
+  });
+
+  // POST /admin/lockdown — toggle global network lockdown
+  fastify.post('/admin/lockdown', {
+    preHandler: [requireRoles(['SUPER_ADMIN'])]
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
+    const { active } = req.body as any;
+    const adminId = (req as any).user?.sub || 'unknown';
+
+    (global as any).__dravio_lockdown__ = active;
+
+    // Broadcast to all connected services via Kafka
+    try {
+      const producer = kafka.producer();
+      await producer.connect();
+      await producer.send({
+        topic: 'dm.admin.lockdown',
+        messages: [{
+          value: JSON.stringify({ active, adminId, timestamp: new Date().toISOString() })
+        }]
+      });
+      await producer.disconnect();
+    } catch (_e) {
+      fastify.log.warn('Could not propagate lockdown via Kafka — operating in local mode');
+    }
+
+    fastify.log.warn(`[LOCKDOWN] ${active ? 'ENGAGED' : 'LIFTED'} by admin ${adminId}`);
+    return reply.send({ active, timestamp: new Date().toISOString() });
+  });
+
+  // ─── ADMIN ACTIONS (Modularized) ───
   fastify.register(import('./api/users.controller.js'), { prefix: '/v1/admin/users', dispatcher: actionDispatcher });
   fastify.register(import('./api/billing.controller.js'), { prefix: '/v1/admin/billing', dispatcher: actionDispatcher });
   fastify.register(import('./api/network.controller.js'), { prefix: '/v1/admin/network', dispatcher: actionDispatcher });

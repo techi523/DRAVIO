@@ -15,7 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./master_init.sql:/docker-entrypoint-initdb.d/master_init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dravio_user -d dravio_dev"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dravio_user} -d ${POSTGRES_DB:-dravio_production}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -174,9 +174,13 @@ services:
     ports:
       - "3005:3005"
     environment:
+      - PORT=3005
+      - DATABASE_URL=postgres://${POSTGRES_USER:-dravio_user}:${POSTGRES_PASSWORD:?err}@postgres:5432/${POSTGRES_DB:-dravio_production}
       - KAFKA_URL=kafka:9092
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
+      postgres:
+        condition: service_healthy
       kafka:
         condition: service_started
 
@@ -220,10 +224,14 @@ services:
     ports:
       - "3008:3008"
     environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-dravio_user}:${POSTGRES_PASSWORD:?err}@postgres:5432/${POSTGRES_DB:-dravio_production}
       - KAFKA_URL=kafka:9092
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
-      - kafka
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
 
 
   buyer-web:

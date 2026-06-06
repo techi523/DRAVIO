@@ -45,7 +45,7 @@ export const LightColors = {
   inputBackground: "#FFFFFF",
   inputBorder: "rgba(0, 0, 0, 0.15)",
   inputFocusBorder: "#0088CC",
-  inputText: "#1A1D20",
+  inputText: "#131415ff",
   inputPlaceholder: "rgba(26, 29, 32, 0.4)",
   cursor: "#0088CC",
 };

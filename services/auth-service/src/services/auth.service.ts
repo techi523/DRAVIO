@@ -6,7 +6,7 @@ import { RegisterInput, LoginInput } from '../schema/auth.schema.js';
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3002';
 
 export class AuthService {
-  async register(input: RegisterInput) {
+  async register(input: RegisterInput): Promise<{ userId: string; role: string }> {
     const passwordHash = await bcrypt.hash(input.password, 10);
     
     // Check if user already exists
@@ -15,17 +15,20 @@ export class AuthService {
       throw new Error('EMAIL_ALREADY_EXISTS');
     }
 
-    const userId = await authRepository.create(input.email, passwordHash);
+    const role = input.role || 'BUYER';
+    const userId = await authRepository.create(input.email, passwordHash, role);
     
     try {
       await axios.post(`${USER_SERVICE_URL}/v1/users`, { 
         auth_user_id: userId, 
+        email: input.email,
         full_name: input.full_name, 
-        country_code: input.country_code 
+        country_code: input.country_code,
+        is_seller: role === 'SELLER',
       });
-      return userId;
+      return { userId, role };
     } catch (err) {
-      // Rollback
+      // Rollback auth user on profile creation failure
       await authRepository.delete(userId);
       console.error('Failed to create user profile, rolled back auth user', err);
       throw new Error('PROFILE_CREATION_FAILED');

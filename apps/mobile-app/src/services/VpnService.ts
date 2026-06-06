@@ -72,8 +72,8 @@ class VpnService {
 
   async recoverSession(): Promise<boolean> {
     try {
-      const status = await VpnManager.getStatus();
-      if (status && status.toUpperCase() === 'CONNECTED') {
+      const stats = await VpnManager.getStatus();
+      if (stats && stats.status.toUpperCase() === 'CONNECTED') {
         const { storage } = await import('./storage');
         const savedSessionId = await storage.getItem('dravio_active_session');
         if (savedSessionId) {
@@ -99,16 +99,19 @@ class VpnService {
 
         // Read real traffic stats from the WireGuard native module
         try {
-          const statusStr = await VpnManager.getStatus();
+          const stats = await VpnManager.getStatus();
           // The native module returns cumulative bytes — calculate delta
-          // For now, track cumulative and report deltas to billing
-          const currentBytesIn = this.stats.bytesIn;
-          const currentBytesOut = this.stats.bytesOut;
+          const currentBytesIn = stats.bytesIn || this.stats.bytesIn;
+          const currentBytesOut = stats.bytesOut || this.stats.bytesOut;
 
           // Report usage delta to billing service
           const deltaIn = currentBytesIn - this.lastBytesIn;
           const deltaOut = currentBytesOut - this.lastBytesOut;
           const totalDelta = deltaIn + deltaOut;
+
+          // Update internal tracking
+          this.stats.bytesIn = currentBytesIn;
+          this.stats.bytesOut = currentBytesOut;
 
           if (totalDelta > 0) {
             this.lastBytesIn = currentBytesIn;

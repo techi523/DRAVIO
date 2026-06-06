@@ -17,6 +17,7 @@ function validatePassword(password: string): string | null {
 }
 
 export default function Register({ navigation }: any) {
+  const t = (str: string) => str;
   const colors = useThemeColors();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -83,8 +84,8 @@ export default function Register({ navigation }: any) {
         contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>DRAVIO</Text>
-        <Text style={styles.subtitle}>Create Your Account</Text>
+        <Text style={styles.title}>{t('DRAVIO')}</Text>
+        <Text style={styles.subtitle}>{t('Create Your Account')}</Text>
 
         {error ? (
           <View style={styles.errorBox}>
@@ -114,7 +115,7 @@ export default function Register({ navigation }: any) {
         />
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.textMuted }]}>I WANT TO</Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>{t('I WANT TO')}</Text>
           <View style={styles.roleToggles}>
             <TouchableOpacity
               style={[
@@ -127,8 +128,8 @@ export default function Register({ navigation }: any) {
               accessibilityRole="radio"
             >
               <Text style={styles.roleIcon}>📱</Text>
-              <Text style={[styles.roleBtnText, { color: colors.textMuted }, role === 'buyer' && { color: colors.primary }]}>BUY DATA</Text>
-              <Text style={[styles.roleDesc, { color: colors.textMuted }]}>Use shared internet</Text>
+              <Text style={[styles.roleBtnText, { color: colors.textMuted }, role === 'buyer' && { color: colors.primary }]}>{t('BUY DATA')}</Text>
+              <Text style={[styles.roleDesc, { color: colors.textMuted }]}>{t('Use shared internet')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -141,8 +142,8 @@ export default function Register({ navigation }: any) {
               accessibilityRole="radio"
             >
               <Text style={styles.roleIcon}>💰</Text>
-              <Text style={[styles.roleBtnText, { color: colors.textMuted }, role === 'seller' && { color: colors.primary }]}>SELL DATA</Text>
-              <Text style={[styles.roleDesc, { color: colors.textMuted }]}>Share & earn</Text>
+              <Text style={[styles.roleBtnText, { color: colors.textMuted }, role === 'seller' && { color: colors.primary }]}>{t('SELL DATA')}</Text>
+              <Text style={[styles.roleDesc, { color: colors.textMuted }]}>{t('Share & earn')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -158,13 +159,13 @@ export default function Register({ navigation }: any) {
             {agreed && <Text style={styles.checkmark}>✓</Text>}
           </View>
           <Text style={[styles.termsText, { color: colors.textMuted }]}>
-            I agree to the{' '}
+            {t('I agree to the')}{' '}
             <Text style={[styles.termsLink, { color: colors.primary }]} onPress={() => navigation.navigate('Terms')}>
-              Terms of Service
+              {t('Terms of Service')}
             </Text>
-            {' '}and{' '}
+            {' '}{t('and')}{' '}
             <Text style={[styles.termsLink, { color: colors.primary }]} onPress={() => navigation.navigate('Privacy')}>
-              Privacy Policy
+              {t('Privacy Policy')}
             </Text>
           </Text>
         </TouchableOpacity>
@@ -179,7 +180,7 @@ export default function Register({ navigation }: any) {
           {loading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text style={styles.btnText}>CREATE ACCOUNT</Text>
+            <Text style={styles.btnText}>{t('CREATE ACCOUNT')}</Text>
           )}
         </TouchableOpacity>
 
@@ -189,8 +190,8 @@ export default function Register({ navigation }: any) {
           accessibilityRole="button"
         >
           <Text style={styles.linkText}>
-            Already have an account?{'  '}
-            <Text style={styles.linkHighlight}>Log In</Text>
+            {t('Already have an account?')}{'  '}
+            <Text style={styles.linkHighlight}>{t('Log In')}</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>

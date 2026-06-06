@@ -47,8 +47,18 @@ fastify.post('/v1/auth/register', async (request: FastifyRequest, reply: Fastify
   }
 
   try {
-    const userId = await authService.register(result.data);
-    return sendSuccess(reply, { userId }, 201);
+    const { userId, role } = await authService.register(result.data);
+    const primaryRole = role.toLowerCase() as 'buyer' | 'seller' | 'admin';
+    const token = fastify.jwt.sign({ sub: userId, roles: [role], role: primaryRole });
+    return sendSuccess(reply, {
+      token,
+      access_token: token,
+      user: {
+        id: userId,
+        email: result.data.email,
+        role: primaryRole,
+      },
+    }, 201);
   } catch (err: any) {
     if (err.message === 'EMAIL_ALREADY_EXISTS') {
       return sendError(reply, 'EMAIL_ALREADY_EXISTS', 400);
@@ -67,8 +77,18 @@ fastify.post('/v1/auth/login', async (request: FastifyRequest, reply: FastifyRep
 
   try {
     const user = await authService.login(result.data);
-    const token = fastify.jwt.sign({ sub: user.id, roles: user.roles });
-    return sendSuccess(reply, { access_token: token });
+    // Map DB roles (BUYER/SELLER/ADMIN) to lowercase for mobile client
+    const primaryRole = (user.roles?.[0] || 'BUYER').toLowerCase() as 'buyer' | 'seller' | 'admin';
+    const token = fastify.jwt.sign({ sub: user.id, roles: user.roles, role: primaryRole });
+    return sendSuccess(reply, {
+      token, // mobile expects 'token', not 'access_token'
+      access_token: token, // keep for backward-compat
+      user: {
+        id: user.id,
+        email: user.email,
+        role: primaryRole,
+      },
+    });
   } catch (err: any) {
     if (err.message === 'INVALID_CREDENTIALS') {
       return sendError(reply, 'INVALID_CREDENTIALS', 401);

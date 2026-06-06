@@ -49,9 +49,7 @@
         }
       ],
       "googleServicesFile": "./google-services.json",
-      "usesCleartextTraffic": true,
       "allowBackup": false,
-      "networkSecurityConfig": "./network_security_config.xml",
       "predictiveBackGestureEnabled": true
     },
     "web": {
@@ -67,7 +65,8 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "minSdkVersion": 26,
-            "buildToolsVersion": "35.0.0"
+            "buildToolsVersion": "35.0.0",
+            "usesCleartextTraffic": true
           }
         }
       ]

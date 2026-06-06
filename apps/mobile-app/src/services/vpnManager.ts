@@ -68,12 +68,16 @@ export const VpnManager = {
     }
   },
 
-  getStatus: async (): Promise<string> => {
+  getStatus: async (): Promise<{ status: string; bytesIn?: number; bytesOut?: number }> => {
     try {
       const statusObj = await Wireguard.getStatus();
-      return statusObj.status.toLowerCase(); // 'connected', 'disconnected', etc.
+      return {
+        status: statusObj.status.toLowerCase(),
+        bytesIn: (statusObj as any).tx || 0,
+        bytesOut: (statusObj as any).rx || 0
+      };
     } catch (error) {
-      return 'unknown';
+      return { status: 'unknown', bytesIn: 0, bytesOut: 0 };
     }
   }
 };

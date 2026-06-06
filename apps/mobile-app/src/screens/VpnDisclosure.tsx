@@ -1,3 +1,4 @@
+import { useThemeColors } from '../theme/useThemeColors';
 import React, { useState } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking,
@@ -20,6 +21,9 @@ interface VpnDisclosureProps {
  * exactly what data is processed and why before the VPN tunnel is activated.
  */
 export default function VpnDisclosure({ onAccept, onDecline }: VpnDisclosureProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
 
   const handleAccept = async () => {
@@ -132,6 +136,9 @@ export default function VpnDisclosure({ onAccept, onDecline }: VpnDisclosureProp
 }
 
 function DisclosureSection({ icon, title, body }: { icon: string; title: string; body: string }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -143,29 +150,29 @@ function DisclosureSection({ icon, title, body }: { icon: string; title: string;
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     padding: 24,
     paddingTop: 48,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   icon: { fontSize: 48, marginBottom: 16 },
   title: {
     fontSize: 22,
     fontWeight: '900',
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -175,11 +182,11 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
-    backgroundColor: Colors.surfaceMid,
+    backgroundColor: colors.surfaceMid,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -191,37 +198,37 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '900',
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   sectionBody: {
     fontSize: 14,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
   },
   policyLink: { marginBottom: 40, alignItems: 'center', paddingVertical: 12 },
-  policyLinkText: { color: Colors.primary, fontSize: 13 },
+  policyLinkText: { color: colors.primary, fontSize: 13 },
   actions: {
     padding: 24,
     paddingBottom: 36,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   scrollHint: {
-    color: Colors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     fontSize: 12,
     marginBottom: 12,
   },
   acceptBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     padding: 18,
     borderRadius: 14,
     alignItems: 'center',
     marginBottom: 12,
   },
   btnDisabled: { opacity: 0.4 },
-  acceptBtnText: { color: '#000', fontWeight: '900', fontSize: 15, letterSpacing: 1 },
+  acceptBtnText: { color: colors.background, fontWeight: '900', fontSize: 15, letterSpacing: 1 },
   declineBtn: { alignItems: 'center', padding: 12 },
-  declineBtnText: { color: Colors.textMuted, fontSize: 14 },
+  declineBtnText: { color: colors.textMuted, fontSize: 14 },
 });

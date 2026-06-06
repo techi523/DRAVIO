@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { Colors } from '../theme/colors';
 import { api } from '../services/api';
@@ -12,6 +13,7 @@ const { width } = Dimensions.get('window');
 type Step = 'init' | 'network' | 'config' | 'diagnostics' | 'active';
 
 export default function Relay() {
+  const { t } = useTranslation();
   const { user } = useContext(AuthContext);
   const [step, setStep] = useState<Step>('init');
   const [isSharing, setIsSharing] = useState(false);
@@ -213,7 +215,7 @@ export default function Relay() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Colors.success} />
-        <Text style={styles.loadingText}>Connecting to Telecom routing registry...</Text>
+        <Text style={styles.loadingText}>{t('Connecting to Telecom routing registry...')}</Text>
       </View>
     );
   }
@@ -222,10 +224,10 @@ export default function Relay() {
     return (
       <View style={styles.center}>
         <Text style={styles.errorIcon}>🌐</Text>
-        <Text style={styles.errorTitle}>Network Core Offline</Text>
+        <Text style={styles.errorTitle}>{t('Network Core Offline')}</Text>
         <Text style={styles.errorSub}>{error}</Text>
         <TouchableOpacity style={styles.retryBtn} onPress={fetchNodeStatus}>
-          <Text style={styles.retryBtnText}>RETRY NODE SYNC</Text>
+          <Text style={styles.retryBtnText}>{t('RETRY NODE SYNC')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -239,10 +241,10 @@ export default function Relay() {
             <View style={styles.heroCircle}>
               <Text style={styles.heroIcon}>📡</Text>
             </View>
-            <Text style={styles.title}>Become an Internet Provider</Text>
-            <Text style={styles.subtitle}>Route Buyer traffic through secure WireGuard tunnels and turn unused bandwidth into earnings.</Text>
+            <Text style={styles.title}>{t('Become an Internet Provider')}</Text>
+            <Text style={styles.subtitle}>{t('Route Buyer traffic through secure WireGuard tunnels and turn unused bandwidth into earnings.')}</Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={startOnboarding}>
-              <Text style={styles.primaryBtnText}>START SELLING BANDWIDTH</Text>
+              <Text style={styles.primaryBtnText}>{t('START SELLING BANDWIDTH')}</Text>
             </TouchableOpacity>
           </View>
         );
@@ -250,16 +252,16 @@ export default function Relay() {
       case 'network':
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Network Quality Scan</Text>
-            <Text style={styles.stepSub}>We are analyzing your carrier signal and ping jitter to optimize routing tunnels.</Text>
+            <Text style={styles.stepTitle}>{t('Network Quality Scan')}</Text>
+            <Text style={styles.stepSub}>{t('We are analyzing your carrier signal and ping jitter to optimize routing tunnels.')}</Text>
             
             <View style={styles.scanCard}>
               <ActivityIndicator color={Colors.success} size="large" />
-              <Text style={styles.scanText}>Checking ping latency & bandwidth capacity...</Text>
+              <Text style={styles.scanText}>{t('Checking ping latency & bandwidth capacity...')}</Text>
             </View>
 
             <TouchableOpacity style={styles.primaryBtn} onPress={detectNetwork}>
-              <Text style={styles.primaryBtnText}>ANALYZE CONNECTION</Text>
+              <Text style={styles.primaryBtnText}>{t('ANALYZE CONNECTION')}</Text>
             </TouchableOpacity>
           </View>
         );
@@ -267,11 +269,11 @@ export default function Relay() {
       case 'config':
         return (
           <ScrollView style={styles.stepContainer} contentContainerStyle={{ paddingBottom: 40 }}>
-            <Text style={styles.stepTitle}>Configure Telecom Node</Text>
-            <Text style={styles.stepSub}>Define your internet plan parameters and pricing thresholds.</Text>
+            <Text style={styles.stepTitle}>{t('Configure Telecom Node')}</Text>
+            <Text style={styles.stepSub}>{t('Define your internet plan parameters and pricing thresholds.')}</Text>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>MAX DATA LIMIT TO SHARE</Text>
+              <Text style={styles.label}>{t('MAX DATA LIMIT TO SHARE')}</Text>
               <View style={styles.configRow}>
                 {[5, 10, 20, 50].map(v => (
                   <TouchableOpacity 
@@ -279,34 +281,34 @@ export default function Relay() {
                     style={[styles.chip, config.dataLimit === v && styles.chipActive]}
                     onPress={() => setConfig({...config, dataLimit: v})}
                   >
-                    <Text style={[styles.chipText, config.dataLimit === v && styles.chipTextActive]}>{v} GB</Text>
+                    <Text style={[styles.chipText, config.dataLimit === v && styles.chipTextActive]}>{v} {t('GB')}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>PRICING STRUCTURE</Text>
+              <Text style={styles.label}>{t('PRICING STRUCTURE')}</Text>
               <View style={styles.pricingRow}>
                 <TouchableOpacity 
                   style={[styles.priceBox, config.pricingModel === 'per_gb' && styles.priceBoxActive]}
                   onPress={() => setConfig({...config, pricingModel: 'per_gb', rate: 0.50})}
                 >
                   <Text style={styles.priceValue}>$0.50</Text>
-                  <Text style={styles.priceUnit}>Per GB</Text>
+                  <Text style={styles.priceUnit}>{t('Per GB')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.priceBox, config.pricingModel === 'per_hour' && styles.priceBoxActive]}
                   onPress={() => setConfig({...config, pricingModel: 'per_hour', rate: 0.20})}
                 >
                   <Text style={styles.priceValue}>$0.20</Text>
-                  <Text style={styles.priceUnit}>Per Hour</Text>
+                  <Text style={styles.priceUnit}>{t('Per Hour')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>MAX CONCURRENT BUYERS</Text>
+              <Text style={styles.label}>{t('MAX CONCURRENT BUYERS')}</Text>
               <View style={styles.configRow}>
                 {[2, 5, 10, 15].map(v => (
                   <TouchableOpacity 
@@ -314,14 +316,14 @@ export default function Relay() {
                     style={[styles.chip, config.maxUsers === v && styles.chipActive]}
                     onPress={() => setConfig({...config, maxUsers: v})}
                   >
-                    <Text style={[styles.chipText, config.maxUsers === v && styles.chipTextActive]}>{v} Clients</Text>
+                    <Text style={[styles.chipText, config.maxUsers === v && styles.chipTextActive]}>{v} {t('Clients')}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
             <TouchableOpacity style={styles.primaryBtn} onPress={startSharingNode}>
-              <Text style={styles.primaryBtnText}>START BROADCASTING</Text>
+              <Text style={styles.primaryBtnText}>{t('START BROADCASTING')}</Text>
             </TouchableOpacity>
           </ScrollView>
         );
@@ -331,35 +333,35 @@ export default function Relay() {
           <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
             <View style={styles.activeHeader}>
               <View>
-                <Text style={styles.activeLabel}>TODAY'S EARNINGS</Text>
+                <Text style={styles.activeLabel}>{t("TODAY'S EARNINGS")}</Text>
                 <Text style={styles.activeValue}>${liveStats.today.toFixed(4)}</Text>
               </View>
               <TouchableOpacity style={styles.stopBtn} onPress={stopSharing}>
-                <Text style={styles.stopBtnText}>STOP BROADCAST</Text>
+                <Text style={styles.stopBtnText}>{t('STOP BROADCAST')}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>CONNECTED BUYERS</Text>
+                <Text style={styles.statLabel}>{t('CONNECTED BUYERS')}</Text>
                 <Text style={styles.statVal}>{liveStats.activeBuyers}</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>ROUTED VOLUME</Text>
-                <Text style={styles.statVal}>{liveStats.dataShared.toFixed(3)} GB</Text>
+                <Text style={styles.statLabel}>{t('ROUTED VOLUME')}</Text>
+                <Text style={styles.statVal}>{liveStats.dataShared.toFixed(3)} {t('GB')}</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>UPTIME</Text>
+                <Text style={styles.statLabel}>{t('UPTIME')}</Text>
                 <Text style={styles.statVal}>{liveStats.uptime}</Text>
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Active Connection Registry</Text>
+            <Text style={styles.sectionTitle}>{t('Active Connection Registry')}</Text>
             <View style={styles.buyerList}>
               {liveStats.activeBuyers === 0 ? (
-                <Text style={styles.emptyText}>Waiting for Buyers to discover & connect to your node...</Text>
+                <Text style={styles.emptyText}>{t('Waiting for Buyers to discover & connect to your node...')}</Text>
               ) : (
-                <Text style={styles.connectedText}>⚠️ Broadcast Active. Buyers are securely routing traffic.</Text>
+                <Text style={styles.connectedText}>{t('⚠️ Broadcast Active. Buyers are securely routing traffic.')}</Text>
               )}
             </View>
           </ScrollView>

@@ -1,6 +1,5 @@
 import { Kafka } from 'kafkajs';
-import mongoose from 'mongoose';
-import axios from 'axios';
+import { walletRepository } from '../repositories/wallet.repository.js';
 
 const kafka = new Kafka({
   clientId: 'billing-service',
@@ -43,20 +42,16 @@ export async function startConsumptionProcessor() {
       const cost = mbUsed * PRICE_PER_MB;
 
       try {
-        // Direct DB update (Assuming Shared MongoDB or API call to Payment Service)
-        // For this demo, we'll assume we deduct via an API call to Payment Service
-        const response = await axios.post(`${process.env.PAYMENT_SERVICE_URL}/v1/payments/wallet/deduct`, {
-          userId,
-          amount: cost,
-          reason: `Internet Usage: ${mbUsed.toFixed(2)} MB`
-        });
-
-        if (response.data.balance <= 0) {
-          console.log(`User ${userId} balance depleted. Sending kill signal.`);
+        // Real-time wallet deduction utilizing atomic database locking
+        const newBalance = await walletRepository.directDeduct(userId, cost);
+        console.log(`[Billing Consumer] Deducted $${cost.toFixed(4)} from user ${userId}. Remaining: $${newBalance.toFixed(4)}`);
+      } catch (err: any) {
+        if (err.message === "INSUFFICIENT_FUNDS") {
+          console.log(`[Billing Consumer] User ${userId} balance depleted. Sending kill signal.`);
           await killSession(userId);
+        } else {
+          console.error('[Billing Consumer] Failed to process billing update:', err);
         }
-      } catch (err) {
-        console.error('Failed to process billing update:', err);
       }
     },
   });

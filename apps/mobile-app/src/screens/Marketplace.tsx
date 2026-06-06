@@ -1,3 +1,4 @@
+import { useThemeColors } from '../theme/useThemeColors';
 import React, { useEffect, useState, useContext } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, DeviceEventEmitter } from 'react-native';
 import { Colors } from '../theme/colors';
@@ -7,6 +8,9 @@ import { vpnService, VpnStats } from '../services/VpnService';
 import { subscribeToPeerUpdates } from '../services/socket';
 
 export default function Marketplace() {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   const { user } = useContext(AuthContext);
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +108,7 @@ export default function Marketplace() {
   if (loading && sellers.length === 0) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Searching for peer nodes near you...</Text>
       </View>
     );
@@ -153,7 +157,7 @@ export default function Marketplace() {
           sellers.map((s, idx) => (
             <View key={s.id} style={[styles.card, idx === 0 && styles.featuredCard]}>
               <View style={styles.cardHeader}>
-                <View style={[styles.relayIcon, { backgroundColor: idx % 2 === 0 ? Colors.secondary : Colors.accent }]} />
+                <View style={[styles.relayIcon, { backgroundColor: idx % 2 === 0 ? colors.secondary : colors.accent }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.relayName}>{s.name || `Node ${s.id.slice(0,4)}`}</Text>
                   <Text style={styles.relayMeta}>{s.avg_speed || 50} Mbps • {s.stability || 99}% Stability</Text>
@@ -167,7 +171,7 @@ export default function Marketplace() {
                 onPress={() => handleConnect(s)}
               >
                 {connectingId === s.id ? (
-                  <ActivityIndicator color="#000" size="small" />
+                  <ActivityIndicator color={colors.background} size="small" />
                 ) : (
                   <Text style={styles.buyBtnText}>{activeSessionId ? 'ACTIVE' : 'CONNECT'}</Text>
                 )}
@@ -193,7 +197,7 @@ export default function Marketplace() {
                     </View>
                     <View style={styles.bigStat}>
                         <Text style={styles.bigStatLabel}>SESSION COST</Text>
-                        <Text style={[styles.bigStatVal, { color: Colors.warning }]}>${(((session?.bytesIn || 0) / (1024*1024*1024)) * 0.5).toFixed(4)}</Text>
+                        <Text style={[styles.bigStatVal, { color: colors.warning }]}>${(((session?.bytesIn || 0) / (1024*1024*1024)) * 0.5).toFixed(4)}</Text>
                     </View>
                 </View>
 
@@ -218,63 +222,63 @@ export default function Marketplace() {
   );
 }
 
-const styles = StyleSheet.create({
-  main: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: any) => StyleSheet.create({
+  main: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, padding: 24 },
   center: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32
   },
   loadingText: {
-    color: Colors.textMuted,
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 16,
     letterSpacing: 1.5,
     textTransform: 'uppercase'
   },
   hero: { marginBottom: 32 },
-  heroTitle: { fontSize: 36, fontWeight: '900', color: '#FFF', lineHeight: 40 },
-  heroSubTitle: { fontSize: 14, color: Colors.textMuted, marginTop: 8 },
-  activeBar: { backgroundColor: Colors.primary, padding: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  heroTitle: { fontSize: 36, fontWeight: '900', color: colors.foreground, lineHeight: 40 },
+  heroSubTitle: { fontSize: 14, color: colors.textMuted, marginTop: 8 },
+  activeBar: { backgroundColor: colors.primary, padding: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   activeBarLeft: { flex: 1 },
-  activeBarTitle: { fontWeight: '900', color: '#000', fontSize: 12 },
+  activeBarTitle: { fontWeight: '900', color: colors.background, fontSize: 12 },
   activeBarSub: { color: 'rgba(0,0,0,0.6)', fontSize: 14, fontWeight: 'bold' },
-  discBtnSmall: { backgroundColor: '#000', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  discBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
-  sectionTitle: { fontSize: 18, fontWeight: '900', color: '#FFF', marginBottom: 16 },
-  card: { backgroundColor: Colors.surfaceMid, padding: 20, borderRadius: 24, marginBottom: 16, borderWidth: 1, borderColor: Colors.border },
-  featuredCard: { borderColor: Colors.primary, backgroundColor: 'rgba(0, 242, 255, 0.05)' },
+  discBtnSmall: { backgroundColor: colors.background, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  discBtnText: { color: colors.foreground, fontSize: 10, fontWeight: '900' },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: colors.foreground, marginBottom: 16 },
+  card: { backgroundColor: colors.surfaceMid, padding: 20, borderRadius: 24, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+  featuredCard: { borderColor: colors.primary, backgroundColor: 'rgba(0, 242, 255, 0.05)' },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   relayIcon: { width: 44, height: 44, borderRadius: 12, marginRight: 16 },
-  relayName: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
-  relayMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  priceText: { fontSize: 18, fontWeight: '900', color: Colors.success },
-  buyBtn: { backgroundColor: Colors.primary, padding: 14, borderRadius: 12, alignItems: 'center' },
-  buyBtnText: { color: '#000', fontWeight: '900', fontSize: 14 },
+  relayName: { fontSize: 16, fontWeight: 'bold', color: colors.foreground },
+  relayMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  priceText: { fontSize: 18, fontWeight: '900', color: colors.success },
+  buyBtn: { backgroundColor: colors.primary, padding: 14, borderRadius: 12, alignItems: 'center' },
+  buyBtnText: { color: colors.background, fontWeight: '900', fontSize: 14 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  sessionSheet: { backgroundColor: Colors.surfaceHigh, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32 },
+  sessionSheet: { backgroundColor: colors.surfaceHigh, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
-  sheetTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
-  liveBadge: { backgroundColor: Colors.danger, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  liveText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  sheetTitle: { fontSize: 24, fontWeight: '900', color: colors.foreground },
+  liveBadge: { backgroundColor: colors.danger, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  liveText: { color: colors.foreground, fontSize: 10, fontWeight: '900' },
   statsRow: { flexDirection: 'row', gap: 20, marginBottom: 32 },
   bigStat: { flex: 1 },
-  bigStatLabel: { fontSize: 10, fontWeight: '900', color: Colors.textMuted, marginBottom: 4 },
-  bigStatVal: { fontSize: 32, fontWeight: '900', color: '#FFF' },
-  meterRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: Colors.border, paddingVertical: 24, marginBottom: 24 },
+  bigStatLabel: { fontSize: 10, fontWeight: '900', color: colors.textMuted, marginBottom: 4 },
+  bigStatVal: { fontSize: 32, fontWeight: '900', color: colors.foreground },
+  meterRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: 24, marginBottom: 24 },
   meter: { flex: 1 },
-  meterLabel: { fontSize: 10, color: Colors.textMuted, marginBottom: 4 },
-  meterVal: { fontSize: 18, fontWeight: 'bold', color: '#FFF' },
-  primaryDiscBtn: { backgroundColor: 'transparent', borderWidth: 2, borderColor: Colors.danger, padding: 20, borderRadius: 16, alignItems: 'center' },
-  primaryDiscBtnText: { color: Colors.danger, fontWeight: '900', fontSize: 14, letterSpacing: 1 },
+  meterLabel: { fontSize: 10, color: colors.textMuted, marginBottom: 4 },
+  meterVal: { fontSize: 18, fontWeight: 'bold', color: colors.foreground },
+  primaryDiscBtn: { backgroundColor: 'transparent', borderWidth: 2, borderColor: colors.danger, padding: 20, borderRadius: 16, alignItems: 'center' },
+  primaryDiscBtnText: { color: colors.danger, fontWeight: '900', fontSize: 14, letterSpacing: 1 },
   errorIcon: { fontSize: 48, marginBottom: 16 },
-  errorTitle: { fontSize: 18, fontWeight: '900', color: '#FFF', marginBottom: 8 },
-  errorSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', marginBottom: 24 },
-  retryBtn: { backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
-  retryBtnText: { color: '#000', fontWeight: '900', fontSize: 13 },
-  emptyCard: { backgroundColor: Colors.surfaceMid, padding: 32, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
-  emptyText: { color: Colors.textMuted, fontSize: 13, textAlign: 'center' }
+  errorTitle: { fontSize: 18, fontWeight: '900', color: colors.foreground, marginBottom: 8 },
+  errorSub: { fontSize: 13, color: colors.textMuted, textAlign: 'center', marginBottom: 24 },
+  retryBtn: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
+  retryBtnText: { color: colors.background, fontWeight: '900', fontSize: 13 },
+  emptyCard: { backgroundColor: colors.surfaceMid, padding: 32, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+  emptyText: { color: colors.textMuted, fontSize: 13, textAlign: 'center' }
 });

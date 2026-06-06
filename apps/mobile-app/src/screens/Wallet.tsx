@@ -96,7 +96,7 @@ export default function Wallet() {
         amount_usd: amt,
         currency: 'KES',
         method: 'MPESA',
-        idempotency_key: Math.random().toString(36).substring(7),
+        idempotency_key: `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 10)}-${Math.random().toString(36).substring(2, 10)}`,
       });
       setShowDeposit(false);
       Alert.alert(

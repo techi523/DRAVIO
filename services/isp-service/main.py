@@ -4,16 +4,17 @@ import hmac
 import hashlib
 import json
 import os
-from adapters.rest_adapter import MockRESTAdapter
-from adapters.soap_adapter import MockSOAPAdapter
+from adapters.production_adapter import ProductionAdapter
 from adapters.base import ISPPackage, ActivationResponse, UsageResponse
 
 app = FastAPI(title="DRAVIO ISP Integration Service")
 
-# Registry of adapters
+# Registry of adapters using env config
 ADAPTERS = {
-    "isp_001": MockRESTAdapter(base_url="https://api.mockisp.com", api_key="test_key"),
-    "isp_002": MockSOAPAdapter(wsdl_url="https://soap.legacy-isp.com/v1?wsdl")
+    "isp_001": ProductionAdapter(
+        base_url=os.environ.get("ISP_001_BASE_URL", "https://api.upstream-isp.com"), 
+        api_key=os.environ.get("ISP_001_API_KEY", "prod_key")
+    )
 }
 
 @app.get("/health")

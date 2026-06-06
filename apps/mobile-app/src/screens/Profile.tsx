@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Modal, ActivityIndicator, Alert, Switch } from 'react-native';
 import { Colors } from '../theme/colors';
 import { useThemeColors } from '../theme/useThemeColors';
 import Input from '../components/Input';
 import { api } from '../services/api';
+import { AuthContext } from '../services/AuthContext';
 
 export default function Profile() {
+  const t = (str: string) => str;
   const colors = useThemeColors();
+  const { logout } = useContext(AuthContext);
   const [isEditing, setIsEditing] = useState(false);
   const [isPayoutOpen, setIsPayoutOpen] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
@@ -113,19 +116,19 @@ export default function Profile() {
                 <Text style={[styles.name, { color: colors.foreground }]}>{profile.name}</Text>
                 <Text style={[styles.email, { color: colors.textMuted }]}>{profile.email}</Text>
                 <View style={styles.roleBadge}>
-                    <Text style={styles.roleText}>ELITE RELAY NODE</Text>
+                    <Text style={styles.roleText}>{t('ELITE RELAY NODE')}</Text>
                 </View>
 
                 {/* Verification Tags */}
                 <View style={styles.tagRow}>
                     <View style={[styles.tag, { borderColor: Colors.success, backgroundColor: 'rgba(0, 255, 170, 0.05)' }]}>
-                        <Text style={[styles.tagText, { color: Colors.success }]}>✓ VERIFIED ID</Text>
+                        <Text style={[styles.tagText, { color: Colors.success }]}>{t('✓ VERIFIED ID')}</Text>
                     </View>
                     <View style={[styles.tag, { borderColor: Colors.primary, backgroundColor: 'rgba(0, 242, 255, 0.05)' }]}>
-                        <Text style={[styles.tagText, { color: Colors.primary }]}>⚡ TOP RATED</Text>
+                        <Text style={[styles.tagText, { color: Colors.primary }]}>{t('⚡ TOP RATED')}</Text>
                     </View>
                     <View style={[styles.tag, { borderColor: Colors.secondary, backgroundColor: 'rgba(112, 0, 255, 0.05)' }]}>
-                        <Text style={[styles.tagText, { color: Colors.secondary }]}>💎 PREMIUM</Text>
+                        <Text style={[styles.tagText, { color: Colors.secondary }]}>{t('💎 PREMIUM')}</Text>
                     </View>
                 </View>
             </View>
@@ -134,34 +137,50 @@ export default function Profile() {
             <View style={styles.statsRow}>
                 <View style={[styles.miniStat, { backgroundColor: colors.surfaceLow, borderColor: colors.border }]}>
                     <Text style={[styles.miniStatVal, { color: colors.foreground }]}>{stats.rating}</Text>
-                    <Text style={[styles.miniStatLabel, { color: colors.textMuted }]}>Rating</Text>
+                    <Text style={[styles.miniStatLabel, { color: colors.textMuted }]}>{t('Rating')}</Text>
                 </View>
                 <View style={[styles.miniStat, { backgroundColor: colors.surfaceLow, borderColor: colors.border }]}>
                     <Text style={[styles.miniStatVal, { color: colors.foreground }]}>{stats.sales}</Text>
-                    <Text style={[styles.miniStatLabel, { color: colors.textMuted }]}>Sales</Text>
+                    <Text style={[styles.miniStatLabel, { color: colors.textMuted }]}>{t('Sales')}</Text>
                 </View>
                 <View style={[styles.miniStat, { backgroundColor: colors.surfaceLow, borderColor: colors.border }]}>
                     <Text style={[styles.miniStatVal, { color: colors.foreground }]}>{stats.uptime}</Text>
-                    <Text style={[styles.miniStatLabel, { color: colors.textMuted }]}>Uptime</Text>
+                    <Text style={[styles.miniStatLabel, { color: colors.textMuted }]}>{t('Uptime')}</Text>
                 </View>
             </View>
 
             {/* Settings Sections */}
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Account Control</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('Account Control')}</Text>
             <View style={[styles.section, { backgroundColor: colors.surfaceLow, borderColor: colors.border }]}>
-                <ProfileRow icon="👤" label="Personal Identity" sub="Manage your KYC and profile" onPress={() => setIsEditing(true)} />
-                <ProfileRow icon="💳" label="Payout Settings" sub="Bank, M-Pesa, or Crypto" onPress={() => setIsPayoutOpen(true)} />
-                <ProfileRow icon="🛡️" label="Security Vault" sub="2FA and Encryption keys" onPress={() => setIsSecurityOpen(true)} isLast />
+                <ProfileRow icon="👤" label={t('Personal Identity')} sub={t('Manage your KYC and profile')} onPress={() => setIsEditing(true)} />
+                <ProfileRow icon="💳" label={t('Payout Settings')} sub={t('Bank, M-Pesa, or Crypto')} onPress={() => setIsPayoutOpen(true)} />
+                <ProfileRow icon="🛡️" label={t('Security Vault')} sub={t('2FA and Encryption keys')} onPress={() => setIsSecurityOpen(true)} isLast />
             </View>
 
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>System Preferences</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('System Preferences')}</Text>
             <View style={[styles.section, { backgroundColor: colors.surfaceLow, borderColor: colors.border }]}>
-                <ProfileRow icon="🔔" label="Intelligent Alerts" sub="Real-time session notifications" onPress={() => setIsAlertsOpen(true)} />
-                <ProfileRow icon="📊" label="Traffic Optimizer" sub="Auto-adjust speed and limits" onPress={() => setIsOptimizerOpen(true)} isLast />
+                <ProfileRow icon="🔔" label={t('Intelligent Alerts')} sub={t('Real-time session notifications')} onPress={() => setIsAlertsOpen(true)} />
+                <ProfileRow icon="📊" label={t('Traffic Optimizer')} sub={t('Auto-adjust speed and limits')} onPress={() => setIsOptimizerOpen(true)} isLast />
             </View>
 
-            <TouchableOpacity style={styles.logoutBtn}>
-                <Text style={styles.logoutBtnText}>DEACTIVATE SESSION (LOGOUT)</Text>
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={() =>
+                Alert.alert(
+                  'Sign Out',
+                  'Are you sure you want to deactivate this session?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'SIGN OUT',
+                      style: 'destructive',
+                      onPress: () => logout(),
+                    },
+                  ]
+                )
+              }
+            >
+                <Text style={styles.logoutBtnText}>{t('DEACTIVATE SESSION (LOGOUT)')}</Text>
             </TouchableOpacity>
         </ScrollView>
 
@@ -169,26 +188,26 @@ export default function Profile() {
         <Modal visible={isEditing} transparent animationType="slide">
             <View style={styles.modalBackdrop}>
                 <View style={[styles.editSheet, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }]}>
-                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Edit Profile</Text>
+                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{t('Edit Profile')}</Text>
                     
                     <Input 
-                        label="FULL NAME"
+                        label={t('FULL NAME')}
                         value={editData.name} 
                         onChangeText={(t) => setEditData({ ...editData, name: t })}
                     />
 
                     <Input 
-                        label="COUNTRY CODE"
+                        label={t('COUNTRY CODE')}
                         value={editData.country} 
                         onChangeText={(t) => setEditData({ ...editData, country: t.toUpperCase() })}
                         maxLength={2}
                     />
 
                     <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={loading}>
-                        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.saveBtnText}>SAVE CHANGES</Text>}
+                        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.saveBtnText}>{t('SAVE CHANGES')}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsEditing(false)}>
-                        <Text style={styles.cancelBtnText}>CANCEL</Text>
+                        <Text style={styles.cancelBtnText}>{t('CANCEL')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -198,25 +217,25 @@ export default function Profile() {
         <Modal visible={isPayoutOpen} transparent animationType="slide">
             <View style={styles.modalBackdrop}>
                 <View style={[styles.editSheet, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }]}>
-                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Payout Settings</Text>
+                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{t('Payout Settings')}</Text>
                     
                     <Input 
-                        label="PRIMARY METHOD"
+                        label={t('PRIMARY METHOD')}
                         value={payoutData.method} 
                         onChangeText={(t) => setPayoutData({ ...payoutData, method: t })}
                     />
 
                     <Input 
-                        label="ACCOUNT / WALLET DETAILS"
+                        label={t('ACCOUNT / WALLET DETAILS')}
                         value={payoutData.account} 
                         onChangeText={(t) => setPayoutData({ ...payoutData, account: t })}
                     />
 
                     <TouchableOpacity style={styles.saveBtn} onPress={handleSavePayout} disabled={loading}>
-                        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.saveBtnText}>UPDATE PAYOUT</Text>}
+                        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.saveBtnText}>{t('UPDATE PAYOUT')}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsPayoutOpen(false)}>
-                        <Text style={styles.cancelBtnText}>CANCEL</Text>
+                        <Text style={styles.cancelBtnText}>{t('CANCEL')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -226,13 +245,13 @@ export default function Profile() {
         <Modal visible={isSecurityOpen} transparent animationType="slide">
             <View style={styles.modalBackdrop}>
                 <View style={[styles.editSheet, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }]}>
-                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Security Vault</Text>
-                    <Text style={{color: colors.textMuted, marginBottom: 24, fontSize: 13}}>Manage your account security and encryption keys.</Text>
+                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{t('Security Vault')}</Text>
+                    <Text style={{color: colors.textMuted, marginBottom: 24, fontSize: 13}}>{t('Manage your account security and encryption keys.')}</Text>
                     
                     <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
                         <View>
-                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>Two-Factor Auth (2FA)</Text>
-                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>Use Authenticator App</Text>
+                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('Two-Factor Auth (2FA)')}</Text>
+                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('Use Authenticator App')}</Text>
                         </View>
                         <Switch 
                             value={securityData.twoFactor} 
@@ -243,8 +262,8 @@ export default function Profile() {
 
                     <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
                         <View>
-                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>Biometric Login</Text>
-                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>FaceID / Fingerprint</Text>
+                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('Biometric Login')}</Text>
+                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('FaceID / Fingerprint')}</Text>
                         </View>
                         <Switch 
                             value={securityData.biometric} 
@@ -254,11 +273,11 @@ export default function Profile() {
                     </View>
 
                     <TouchableOpacity style={[styles.saveBtn, {backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.danger, marginTop: 32}]} onPress={() => Alert.alert('Keys Rotated', 'Your node encryption keys have been regenerated.')}>
-                        <Text style={[styles.saveBtnText, {color: Colors.danger}]}>ROTATE ENCRYPTION KEYS</Text>
+                        <Text style={[styles.saveBtnText, {color: Colors.danger}]}>{t('ROTATE ENCRYPTION KEYS')}</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsSecurityOpen(false)}>
-                        <Text style={styles.cancelBtnText}>DONE</Text>
+                        <Text style={styles.cancelBtnText}>{t('DONE')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -268,13 +287,13 @@ export default function Profile() {
         <Modal visible={isAlertsOpen} transparent animationType="slide">
             <View style={styles.modalBackdrop}>
                 <View style={[styles.editSheet, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }]}>
-                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Intelligent Alerts</Text>
-                    <Text style={{color: colors.textMuted, marginBottom: 24, fontSize: 13}}>Manage real-time notifications for your relay node.</Text>
+                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{t('Intelligent Alerts')}</Text>
+                    <Text style={{color: colors.textMuted, marginBottom: 24, fontSize: 13}}>{t('Manage real-time notifications for your relay node.')}</Text>
                     
                     <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
                         <View>
-                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>High Usage Warnings</Text>
-                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>Alert when hitting 90% capacity</Text>
+                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('High Usage Warnings')}</Text>
+                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('Alert when hitting 90% capacity')}</Text>
                         </View>
                         <Switch 
                             value={alertsData.usage} 
@@ -285,8 +304,8 @@ export default function Profile() {
 
                     <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
                         <View>
-                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>Connection Drops</Text>
-                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>Notify if node goes offline</Text>
+                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('Connection Drops')}</Text>
+                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('Notify if node goes offline')}</Text>
                         </View>
                         <Switch 
                             value={alertsData.drops} 
@@ -297,8 +316,8 @@ export default function Profile() {
 
                     <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
                         <View>
-                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>Zero Balance Auto-Kill</Text>
-                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>Alert when a buyer is auto-disconnected</Text>
+                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('Zero Balance Auto-Kill')}</Text>
+                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('Alert when a buyer is auto-disconnected')}</Text>
                         </View>
                         <Switch 
                             value={alertsData.autoKill} 
@@ -308,7 +327,7 @@ export default function Profile() {
                     </View>
 
                     <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={() => setIsAlertsOpen(false)}>
-                        <Text style={styles.saveBtnText}>DONE</Text>
+                        <Text style={styles.saveBtnText}>{t('DONE')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -318,18 +337,18 @@ export default function Profile() {
         <Modal visible={isOptimizerOpen} transparent animationType="slide">
             <View style={styles.modalBackdrop}>
                 <View style={[styles.editSheet, { backgroundColor: colors.surfaceHigh, borderColor: colors.border }]}>
-                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Traffic Optimizer</Text>
-                    <Text style={{color: colors.textMuted, marginBottom: 24, fontSize: 13}}>Fine-tune your node's performance and bandwidth limits.</Text>
+                    <Text style={[styles.sheetTitle, { color: colors.foreground }]}>{t('Traffic Optimizer')}</Text>
+                    <Text style={{color: colors.textMuted, marginBottom: 24, fontSize: 13}}>{t('Fine-tune your node\'s performance and bandwidth limits.')}</Text>
                     
                     <Input 
-                        label="MAX BANDWIDTH (MBPS)"
+                        label={t('MAX BANDWIDTH (MBPS)')}
                         value={optimizerData.maxBandwidth} 
                         onChangeText={(t) => setOptimizerData({ ...optimizerData, maxBandwidth: t })}
                         keyboardType="numeric"
                     />
 
                     <Input 
-                        label="CONCURRENT USERS LIMIT"
+                        label={t('CONCURRENT USERS LIMIT')}
                         value={optimizerData.concurrentUsers} 
                         onChangeText={(t) => setOptimizerData({ ...optimizerData, concurrentUsers: t })}
                         keyboardType="numeric"
@@ -337,8 +356,8 @@ export default function Profile() {
 
                     <View style={[styles.switchRow, {borderBottomWidth: 0, marginTop: 12}]}>
                         <View>
-                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>Auto-Throttle</Text>
-                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>Reduce speed gracefully on high load</Text>
+                            <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('Auto-Throttle')}</Text>
+                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('Reduce speed gracefully on high load')}</Text>
                         </View>
                         <Switch 
                             value={optimizerData.autoThrottle} 
@@ -348,10 +367,10 @@ export default function Profile() {
                     </View>
 
                     <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={() => {Alert.alert('Success', 'Traffic rules updated successfully'); setIsOptimizerOpen(false);}}>
-                        <Text style={styles.saveBtnText}>SAVE OPTIMIZATION</Text>
+                        <Text style={styles.saveBtnText}>{t('SAVE OPTIMIZATION')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsOptimizerOpen(false)}>
-                        <Text style={styles.cancelBtnText}>CANCEL</Text>
+                        <Text style={styles.cancelBtnText}>{t('CANCEL')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>

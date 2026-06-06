@@ -1,8 +1,12 @@
+import { useThemeColors } from '../theme/useThemeColors';
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '../theme/colors';
 
 export function PrivacyPolicyScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -83,6 +87,9 @@ export function PrivacyPolicyScreen({ navigation }: any) {
 }
 
 export function TermsOfServiceScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -158,6 +165,9 @@ export function TermsOfServiceScreen({ navigation }: any) {
 }
 
 function Section({ title, children }: { title: string; children: string }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -166,30 +176,30 @@ function Section({ title, children }: { title: string; children: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     padding: 24,
     paddingTop: 48,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   back: { marginBottom: 12 },
-  backText: { color: Colors.primary, fontSize: 15 },
-  title: { fontSize: 24, fontWeight: '900', color: Colors.foreground, marginBottom: 4 },
-  date: { fontSize: 12, color: Colors.textMuted },
+  backText: { color: colors.primary, fontSize: 15 },
+  title: { fontSize: 24, fontWeight: '900', color: colors.foreground, marginBottom: 4 },
+  date: { fontSize: 12, color: colors.textMuted },
   scroll: { flex: 1 },
   content: { padding: 24, paddingBottom: 60 },
   section: { marginBottom: 28 },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '900',
-    color: Colors.primary,
+    color: colors.primary,
     marginBottom: 10,
   },
   sectionBody: {
     fontSize: 14,
-    color: Colors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
   },
 });

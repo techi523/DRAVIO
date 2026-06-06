@@ -17,10 +17,10 @@ export class AuthRepository {
     return result.rows[0] || null;
   }
 
-  async create(email: string, passwordHash: string): Promise<string> {
+  async create(email: string, passwordHash: string, role: string = 'BUYER'): Promise<string> {
     const result = await pool.query(
-      'INSERT INTO auth.users (email, password_hash) VALUES ($1, $2) RETURNING id',
-      [email, passwordHash]
+      'INSERT INTO auth.users (email, password_hash, roles) VALUES ($1, $2, $3) RETURNING id',
+      [email, passwordHash, [role]]
     );
     return result.rows[0].id;
   }

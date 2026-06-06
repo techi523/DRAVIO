@@ -10,6 +10,7 @@ import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
 
 export default function Login({ navigation }: any) {
+  const t = (str: string) => str;
   const colors = useThemeColors();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +21,7 @@ export default function Login({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
+      setError(t('Please enter your email and password.'));
       return;
     }
 
@@ -36,11 +37,11 @@ export default function Login({ navigation }: any) {
     } catch (err: any) {
       const msg = err.message || '';
       if (msg.includes('timed out') || msg.includes('Network request failed')) {
-        setError('Cannot reach the server. Check your internet connection.');
+        setError(t('Cannot reach the server. Check your internet connection.'));
       } else if (msg.includes('401') || msg.toLowerCase().includes('invalid')) {
-        setError('Incorrect email or password.');
+        setError(t('Incorrect email or password.'));
       } else {
-        setError(msg || 'Login failed. Please try again.');
+        setError(msg || t('Login failed. Please try again.'));
       }
     } finally {
       setLoading(false);
@@ -56,8 +57,8 @@ export default function Login({ navigation }: any) {
         contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>DRAVIO</Text>
-        <Text style={styles.subtitle}>Decentralized Internet Marketplace</Text>
+        <Text style={styles.title}>{t('DRAVIO')}</Text>
+        <Text style={styles.subtitle}>{t('Decentralized Internet Marketplace')}</Text>
 
         {error ? (
           <View style={styles.errorBox}>
@@ -66,52 +67,52 @@ export default function Login({ navigation }: any) {
         ) : null}
 
         <Input
-          label="EMAIL"
-          placeholder="you@example.com"
+          label={t('EMAIL')}
+          placeholder={t('you@example.com')}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
           autoCorrect={false}
           returnKeyType="next"
-          accessibilityLabel="Email address"
+          accessibilityLabel={t('Email address')}
         />
 
         <Input
-          label="PASSWORD"
-          placeholder="Your password"
+          label={t('PASSWORD')}
+          placeholder={t('Your password')}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
           passwordToggle
           returnKeyType="done"
           onSubmitEditing={handleLogin}
-          accessibilityLabel="Password"
+          accessibilityLabel={t('Password')}
         />
 
         <TouchableOpacity
           style={[styles.btn, loading && styles.btnDisabled]}
           onPress={handleLogin}
           disabled={loading}
-          accessibilityLabel="Log in"
+          accessibilityLabel={t('Log in')}
           accessibilityRole="button"
         >
           {loading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text style={styles.btnText}>LOG IN</Text>
+            <Text style={styles.btnText}>{t('LOG IN')}</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => navigation.navigate('Register')}
           style={styles.linkContainer}
-          accessibilityLabel="Create a new account"
+          accessibilityLabel={t('Create a new account')}
           accessibilityRole="button"
         >
           <Text style={styles.linkText}>
-            Don't have an account?{'  '}
-            <Text style={styles.linkHighlight}>Sign Up</Text>
+            {t("Don't have an account?")}{'  '}
+            <Text style={styles.linkHighlight}>{t('Sign Up')}</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>

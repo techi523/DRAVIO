@@ -12,9 +12,10 @@ const SERVICES = {
   user:        isLocal ? 'http://localhost:3002' : 'http://user-service:3002',
   marketplace: isLocal ? 'http://localhost:3003' : 'http://marketplace-service:3000',
   session:     isLocal ? 'http://localhost:3005' : 'http://session-service:3005',
-  payment:     isLocal ? 'http://localhost:3004' : 'http://payment-service:3005',
+  payment:     isLocal ? 'http://localhost:3005' : 'http://payment-service:3005',
   billing:     isLocal ? 'http://localhost:3006' : 'http://billing-service:3006',
   isp:         isLocal ? 'http://localhost:8083' : 'http://isp-service:8080',
+  admin:       isLocal ? 'http://localhost:3008' : 'http://admin-service:3008',
 } as const;
 
 const fastify = Fastify({ logger: true });
@@ -133,6 +134,22 @@ async function build() {
     upstream: SERVICES.isp,
     prefix: '/v1/isp',
     rewritePrefix: '/v1/isp',
+    ...proxyConfig
+  });
+
+  // Admin Service (3008) — protected: only accessible with ADMIN role JWT
+  fastify.register(proxy, {
+    upstream: SERVICES.admin,
+    prefix: '/v1/admin',
+    rewritePrefix: '/v1/admin',
+    ...proxyConfig
+  });
+
+  // Admin shorthand used by mobile AdminDashboard (/admin/telemetry, etc.)
+  fastify.register(proxy, {
+    upstream: SERVICES.admin,
+    prefix: '/admin',
+    rewritePrefix: '/admin',
     ...proxyConfig
   });
 }
