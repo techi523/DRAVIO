@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 export default function RegisterPage() {
   const { register, user, loading } = useAuth();
@@ -77,7 +78,9 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form className="space-y-5 text-left" onSubmit={handleSubmit}>
+        <SocialLoginButtons onSuccess={() => router.push("/")} onError={(msg) => setError(msg)} />
+
+        <form className="space-y-6 text-left" onSubmit={handleSubmit}>
           <div>
             <label className="text-[10px] uppercase font-bold text-white/30 ml-2">
               Full Name

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
@@ -62,6 +63,8 @@ export default function LoginPage() {
             {error}
           </div>
         )}
+
+        <SocialLoginButtons onSuccess={() => router.push("/")} onError={(msg) => setError(msg)} />
 
         <form className="space-y-6 text-left" onSubmit={handleSubmit}>
           <div>

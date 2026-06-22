@@ -394,6 +394,24 @@ export const api = {
 
     refresh: () =>
       request<AuthResponse>('/v1/auth/refresh', { method: 'POST' }),
+
+    oauthLogin: (provider: string, tokens: { id_token?: string; access_token?: string }, role_preference: string = 'BUYER') =>
+      request<AuthResponse>('/v1/auth/oauth', {
+        method: 'POST',
+        body: JSON.stringify({ provider, ...tokens, role_preference }),
+      }),
+
+    sendOtp: (phone_number: string) =>
+      request<{ message: string }>('/v1/auth/otp/send', {
+        method: 'POST',
+        body: JSON.stringify({ phone_number }),
+      }),
+
+    verifyOtp: (phone_number: string, code: string, role_preference: string = 'BUYER') =>
+      request<AuthResponse>('/v1/auth/otp/verify', {
+        method: 'POST',
+        body: JSON.stringify({ phone_number, code, role_preference }),
+      }),
   },
 
   // ── User ─────────────────────────────────────────────────────

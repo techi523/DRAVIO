@@ -43,9 +43,16 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "dravio.app", "pathPrefix": "/open" }
+            {
+              "scheme": "https",
+              "host": "dravio.app",
+              "pathPrefix": "/open"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "googleServicesFile": "./google-services.json",
@@ -69,7 +76,9 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
@@ -78,4 +87,3 @@
     }
   }
 }
-

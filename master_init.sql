@@ -16,10 +16,21 @@ CREATE SCHEMA IF NOT EXISTS audit;
 CREATE TABLE IF NOT EXISTS auth.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT, -- Nullable for users who sign up via social auth only
     roles TEXT[] DEFAULT ARRAY['BUYER'],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Linked Authentication Providers Table
+CREATE TABLE IF NOT EXISTS auth.providers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    provider_name VARCHAR(50) NOT NULL, -- e.g., 'google', 'github', 'apple'
+    provider_id VARCHAR(255) NOT NULL, -- The subject/ID from the provider
+    provider_email VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider_name, provider_id)
 );
 
 -- Refresh Tokens Table

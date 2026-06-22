@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import '../globals.css';
 import { ErrorBoundary } from "@/components/ErrorBoundary";

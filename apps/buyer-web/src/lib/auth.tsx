@@ -32,6 +32,9 @@ interface AuthContextData {
   ) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  oauthLogin: (provider: string, tokens: { id_token?: string; access_token?: string }, role?: string) => Promise<void>;
+  sendOtp: (phone_number: string) => Promise<void>;
+  verifyOtp: (phone_number: string, code: string, role?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -236,6 +239,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token, user]);
 
+  const oauthLogin = useCallback(
+    async (provider: string, tokens: { id_token?: string; access_token?: string }, role?: string) => {
+      const { access_token } = await api.auth.oauthLogin(provider, tokens, role);
+      
+      localStorage.setItem("dravio_access_token", access_token);
+      setToken(access_token);
+
+      const payload = decodeJwt(access_token);
+      const newUser: User = {
+        id: payload.sub,
+        email: "", // Fetched below
+        role: (payload.roles?.[0] as User["role"]) || "buyer",
+      };
+
+      try {
+        const { profile } = await api.user.getProfile();
+        newUser.profile = profile;
+      } catch {}
+
+      localStorage.setItem("dravio_user", JSON.stringify(newUser));
+      setUser(newUser);
+      scheduleTokenRefresh(access_token);
+
+      window.dispatchEvent(
+        new CustomEvent("dravio:authenticated", { detail: { token: access_token, user: newUser } })
+      );
+    },
+    [scheduleTokenRefresh]
+  );
+
+  const sendOtp = useCallback(async (phone_number: string) => {
+    await api.auth.sendOtp(phone_number);
+  }, []);
+
+  const verifyOtp = useCallback(
+    async (phone_number: string, code: string, role?: string) => {
+      const { access_token } = await api.auth.verifyOtp(phone_number, code, role);
+      
+      localStorage.setItem("dravio_access_token", access_token);
+      setToken(access_token);
+
+      const payload = decodeJwt(access_token);
+      const newUser: User = {
+        id: payload.sub,
+        email: "", 
+        role: (payload.roles?.[0] as User["role"]) || "buyer",
+      };
+
+      try {
+        const { profile } = await api.user.getProfile();
+        newUser.profile = profile;
+      } catch {}
+
+      localStorage.setItem("dravio_user", JSON.stringify(newUser));
+      setUser(newUser);
+      scheduleTokenRefresh(access_token);
+
+      window.dispatchEvent(
+        new CustomEvent("dravio:authenticated", { detail: { token: access_token, user: newUser } })
+      );
+    },
+    [scheduleTokenRefresh]
+  );
+
   // Cleanup on unmount
   useEffect(() => {
     return () => clearRefreshTimer();
@@ -243,7 +310,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login, register, logout, refreshProfile }}
+      value={{ user, token, loading, login, register, logout, refreshProfile, oauthLogin, sendOtp, verifyOtp }}
     >
       {children}
     </AuthContext.Provider>

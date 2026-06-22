@@ -45,6 +45,34 @@ export default function LoginPage() {
     }
   };
 
+  const handleOAuthLogin = async (provider: string) => {
+    setError('');
+    setLoading(true);
+    try {
+      if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+        throw new Error(`${provider} authentication is not fully configured yet.`);
+      }
+      
+      const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8080';
+      const res = await fetch(`${GATEWAY_URL}/v1/auth/oauth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, id_token: 'mock_token', role_preference: 'ADMIN' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || 'OAuth login failed');
+      if (data.data?.user?.role !== 'admin') throw new Error('Access Denied. Administrator privileges required.');
+
+      localStorage.setItem('dravio_admin_token', data.data.token);
+      window.location.href = '/';
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen w-full bg-[#0a0a0f] p-4 font-mono">
       <div className="w-full max-w-md bg-[#12121a] border border-[#1f1f2e] rounded-xl shadow-2xl p-8 relative overflow-hidden">
@@ -108,6 +136,25 @@ export default function LoginPage() {
             {loading ? 'AUTHENTICATING...' : 'INITIALIZE UPLINK'}
           </button>
         </form>
+
+        <div className="my-6 relative flex items-center justify-center">
+          <div className="absolute w-full border-t border-[#1f1f2e]"></div>
+          <span className="bg-[#12121a] px-3 text-xs text-[#555566] tracking-widest relative z-10">SSO OVERRIDE</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 z-10 relative">
+          {['google', 'apple', 'github', 'microsoft'].map(provider => (
+            <button
+              key={provider}
+              type="button"
+              onClick={() => handleOAuthLogin(provider)}
+              disabled={loading}
+              className="w-full border border-[#2a2a3b] hover:bg-[#1a1a24] text-[#8f8f9d] hover:text-white py-2 rounded-lg text-xs font-bold uppercase transition-colors tracking-wider"
+            >
+              {provider}
+            </button>
+          ))}
+        </div>
 
         <div className="mt-8 text-center border-t border-[#1f1f2e] pt-6">
           <p className="text-[10px] text-[#555566] tracking-widest uppercase">

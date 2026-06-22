@@ -15,6 +15,9 @@ interface AuthContextData {
   loading: boolean;
   login: (token: string, user: User) => Promise<void>;
   logout: () => Promise<void>;
+  oauthLogin: (provider: string, tokens: { id_token?: string; access_token?: string }, role?: string) => Promise<void>;
+  sendOtp: (phone_number: string) => Promise<void>;
+  verifyOtp: (phone_number: string, code: string, role?: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -33,7 +36,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (storedToken && storedUser) {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
-          // Background session recovery for active VPN tunnels
           import('./VpnService').then(m => m.vpnService.recoverSession());
         }
       } catch (err) {
@@ -69,8 +71,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const oauthLogin = async (provider: string, tokens: { id_token?: string; access_token?: string }, role = 'BUYER') => {
+    const res = await api.post<{ access_token: string; token: string; user: User }>('/auth/oauth', {
+      provider,
+      ...tokens,
+      role_preference: role,
+    });
+    
+    // mobile expects `token` but might return `access_token`
+    const newToken = res.token || res.access_token;
+    await login(newToken, res.user);
+  };
+
+  const sendOtp = async (phone_number: string) => {
+    await api.post('/auth/otp/send', { phone_number });
+  };
+
+  const verifyOtp = async (phone_number: string, code: string, role = 'BUYER') => {
+    const res = await api.post<{ access_token: string; token: string; user: User }>('/auth/otp/verify', {
+      phone_number,
+      code,
+      role_preference: role,
+    });
+    const newToken = res.token || res.access_token;
+    await login(newToken, res.user);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, oauthLogin, sendOtp, verifyOtp }}>
       {children}
     </AuthContext.Provider>
   );

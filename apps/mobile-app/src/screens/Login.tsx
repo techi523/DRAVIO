@@ -6,6 +6,7 @@ import {
 import { Colors } from '../theme/colors';
 import { useThemeColors } from '../theme/useThemeColors';
 import Input from '../components/Input';
+import SocialLoginButtons from '../components/SocialLoginButtons';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
 
@@ -65,6 +66,8 @@ export default function Login({ navigation }: any) {
             <Text style={styles.errorText}>⚠️ {error}</Text>
           </View>
         ) : null}
+
+        <SocialLoginButtons />
 
         <Input
           label={t('EMAIL')}

@@ -77,22 +77,86 @@ fastify.post('/v1/auth/login', async (request: FastifyRequest, reply: FastifyRep
 
   try {
     const user = await authService.login(result.data);
-    // Map DB roles (BUYER/SELLER/ADMIN) to lowercase for mobile client
     const primaryRole = (user.roles?.[0] || 'BUYER').toLowerCase() as 'buyer' | 'seller' | 'admin';
     const token = fastify.jwt.sign({ sub: user.id, roles: user.roles, role: primaryRole });
     return sendSuccess(reply, {
-      token, // mobile expects 'token', not 'access_token'
-      access_token: token, // keep for backward-compat
-      user: {
-        id: user.id,
-        email: user.email,
-        role: primaryRole,
-      },
+      token,
+      access_token: token,
+      user: { id: user.id, email: user.email, role: primaryRole },
     });
   } catch (err: any) {
-    if (err.message === 'INVALID_CREDENTIALS') {
-      return sendError(reply, 'INVALID_CREDENTIALS', 401);
+    if (err.message === 'INVALID_CREDENTIALS') return sendError(reply, 'INVALID_CREDENTIALS', 401);
+    fastify.log.error(err);
+    return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
+  }
+});
+
+// OAuth Login
+import { OAuthLoginSchema, OtpSendSchema, OtpVerifySchema } from './schema/auth.schema.js';
+import { otpService } from './services/otp.service.js';
+
+fastify.post('/v1/auth/oauth', async (request: FastifyRequest, reply: FastifyReply) => {
+  const result = OAuthLoginSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
+
+  try {
+    const user = await authService.oauthLogin(result.data);
+    const primaryRole = (user.roles?.[0] || 'BUYER').toLowerCase() as 'buyer' | 'seller' | 'admin';
+    const token = fastify.jwt.sign({ sub: user.id, roles: user.roles, role: primaryRole });
+    return sendSuccess(reply, {
+      token,
+      access_token: token,
+      user: { id: user.id, email: user.email, role: primaryRole },
+    });
+  } catch (err: any) {
+    fastify.log.error(err);
+    if (['INVALID_OAUTH_PAYLOAD', 'EMAIL_REQUIRED_FOR_NEW_OAUTH_ACCOUNT'].includes(err.message)) {
+      return sendError(reply, err.message, 400);
     }
+    return sendError(reply, 'OAUTH_VERIFICATION_FAILED', 401);
+  }
+});
+
+// Send OTP
+fastify.post('/v1/auth/otp/send', async (request: FastifyRequest, reply: FastifyReply) => {
+  const result = OtpSendSchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
+
+  try {
+    await otpService.sendOtp(result.data.phone_number);
+    return sendSuccess(reply, { message: 'OTP sent successfully' });
+  } catch (err: any) {
+    fastify.log.error(err);
+    return sendError(reply, 'OTP_SEND_FAILED', 500);
+  }
+});
+
+// Verify OTP
+fastify.post('/v1/auth/otp/verify', async (request: FastifyRequest, reply: FastifyReply) => {
+  const result = OtpVerifySchema.safeParse(request.body);
+  if (!result.success) {
+    return sendError(reply, 'VALIDATION_FAILED', 400, result.error.format());
+  }
+
+  try {
+    const isValid = await otpService.verifyOtp(result.data.phone_number, result.data.code);
+    if (!isValid) {
+      return sendError(reply, 'INVALID_OTP', 401);
+    }
+
+    const user = await authService.otpLogin(result.data.phone_number, result.data.role_preference);
+    const primaryRole = (user.roles?.[0] || 'BUYER').toLowerCase() as 'buyer' | 'seller' | 'admin';
+    const token = fastify.jwt.sign({ sub: user.id, roles: user.roles, role: primaryRole });
+    return sendSuccess(reply, {
+      token,
+      access_token: token,
+      user: { id: user.id, email: user.email, role: primaryRole, phone: result.data.phone_number },
+    });
+  } catch (err: any) {
     fastify.log.error(err);
     return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
   }

@@ -19,10 +19,12 @@
     "bcryptjs": "^3.0.3",
     "fastify": "^4.26.2",
     "pg": "^8.11.3",
+    "twilio": "^6.0.2",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.37",
     "@types/pg": "^8.18.0",
     "tsx": "^4.7.1",
