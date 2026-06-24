@@ -4,7 +4,7 @@
  * Features: JWT auth, automatic token refresh, request deduplication, timeout, error handling.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://api.dravio.com' : 'http://localhost:8080');
 
 // ─── Types ─────────────────────────────────────────────────────────
 

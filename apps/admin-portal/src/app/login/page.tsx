@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { TerminalSquare, Lock, Eye, EyeOff } from 'lucide-react';
+import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,30 +17,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8080';
-      const res = await fetch(`${GATEWAY_URL}/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error?.message || 'Invalid credentials');
-      }
+      const data = await api.auth.login(email, password);
 
       // Check if user has ADMIN role
-      if (data.data?.user?.role !== 'admin') {
+      if (data?.user?.role !== 'admin') {
          throw new Error('Access Denied. Administrator privileges required.');
       }
 
       // Save token and redirect
-      localStorage.setItem('dravio_admin_token', data.data.token);
+      localStorage.setItem('dravio_admin_token', data.token);
       window.location.href = '/';
 
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -53,21 +43,14 @@ export default function LoginPage() {
         throw new Error(`${provider} authentication is not fully configured yet.`);
       }
       
-      const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8080';
-      const res = await fetch(`${GATEWAY_URL}/v1/auth/oauth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, id_token: 'mock_token', role_preference: 'ADMIN' }),
-      });
+      const data = await api.auth.oauthLogin(provider, { id_token: 'mock_token' }, 'ADMIN');
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error?.message || 'OAuth login failed');
-      if (data.data?.user?.role !== 'admin') throw new Error('Access Denied. Administrator privileges required.');
+      if (data?.user?.role !== 'admin') throw new Error('Access Denied. Administrator privileges required.');
 
-      localStorage.setItem('dravio_admin_token', data.data.token);
+      localStorage.setItem('dravio_admin_token', data.token);
       window.location.href = '/';
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'OAuth login failed');
     } finally {
       setLoading(false);
     }

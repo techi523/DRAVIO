@@ -29,7 +29,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         // Use the GATEWAY url — it proxies to admin-service and handles JWT auth
-        const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8080';
+        const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || (process.env.NODE_ENV === 'production' ? 'https://api.dravio.com' : 'http://127.0.0.1:8080');
 
         // TODO: In production, retrieve this token from a secure admin session store
         // For now, retrieve from localStorage (set during admin login)

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useSocket } from '@/components/providers/socket-provider';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity, Zap, Server, Shield, Globe } from 'lucide-react';
+import { api } from '@/lib/api';
 
 export default function CommandCenter() {
     const { socket, systemHealth } = useSocket();
@@ -22,14 +23,8 @@ export default function CommandCenter() {
 
         const fetchIncidents = async () => {
             try {
-                const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8080';
-                const token = localStorage.getItem('dravio_admin_token');
-                if (!token) return;
-                const res = await fetch(`${GATEWAY_URL}/v1/admin/incidents`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
+                const data = await api.admin.getIncidents();
+                if (data) {
                     setIncidents(data.slice(0, 5));
                 }
             } catch (err) {

@@ -30,8 +30,16 @@ async function build() {
     ? process.env.CORS_ORIGINS.split(',')
     : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8000'];
 
+  const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin) return callback(null, true);
+    if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'), false);
+  };
+
   await fastify.register(cors, {
-    origin: allowedOrigins,
+    origin: corsOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -207,11 +215,19 @@ const start = async () => {
       ? process.env.CORS_ORIGINS.split(',')
       : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8000'];
 
+    const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin) return callback(null, true);
+      if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error('Not allowed by CORS'), false);
+    };
+
     // Attach Socket.io directly to Fastify's underlying Node http.Server.
     // This avoids any plugin type-overload issues while sharing the same port.
     const io = new SocketIOServer(fastify.server, {
       cors: {
-        origin: allowedOrigins,
+        origin: corsOrigin,
         methods: ['GET', 'POST'],
         credentials: true
       },

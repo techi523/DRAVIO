@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Activity, Globe, Zap, ShieldCheck } from 'lucide-react';
+import { api } from '@/lib/api';
 import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'recharts';
 
 export const NOCPanel = () => {
@@ -16,16 +17,9 @@ export const NOCPanel = () => {
   useEffect(() => {
     const fetchTelemetry = async () => {
       try {
-        const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8080';
-        const token = localStorage.getItem('dravio_admin_token');
-        if (!token) return;
-
-        const res = await fetch(`${GATEWAY_URL}/v1/admin/telemetry`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const data = await api.admin.getTelemetry();
         
-        if (res.ok) {
-          const data = await res.json();
+        if (data) {
           setStats({
             activeTunnels: data.active_tunnels || 0,
             totalBandwidth: data.total_bandwidth_gb || 0,
