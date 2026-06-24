@@ -30,7 +30,7 @@ async function build() {
     ? process.env.CORS_ORIGINS.split(',')
     : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8000'];
 
-  const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
     if (!origin) return callback(null, true);
     if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -215,7 +215,7 @@ const start = async () => {
       ? process.env.CORS_ORIGINS.split(',')
       : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8000'];
 
-    const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
       if (!origin) return callback(null, true);
       if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
         return callback(null, true);
