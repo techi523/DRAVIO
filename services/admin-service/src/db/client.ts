@@ -10,7 +10,7 @@ export const pool = new Pool(
   process.env.DATABASE_URL
     ? { connectionString: process.env.DATABASE_URL }
     : {
-        host: process.env.DB_HOST || 'localhost',
+        host: process.env.DB_HOST || (process.env.LOCAL_DEV === 'true' ? 'localhost' : 'admin-db'),
         port: parseInt(process.env.DB_PORT || '5432'),
         user: process.env.DB_USER || 'dravio_user',
         password: process.env.DB_PASSWORD || 'dravio_password',

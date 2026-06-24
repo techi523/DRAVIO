@@ -84,7 +84,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#0a0a0f] border border-[#2a2a3b] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#00f2ff] transition-colors"
+              className="w-full bg-[#1F2937] border border-[#2a2a3b] rounded-lg px-4 py-3 text-[#F9FAFB] placeholder-[#9CA3AF] focus:outline-none focus:border-[#00f2ff] transition-colors"
               placeholder="admin@dravio.app"
               required
             />
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#0a0a0f] border border-[#2a2a3b] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#00f2ff] transition-colors"
+                className="w-full bg-[#1F2937] border border-[#2a2a3b] rounded-lg px-4 py-3 text-[#F9FAFB] placeholder-[#9CA3AF] focus:outline-none focus:border-[#00f2ff] transition-colors"
                 placeholder="••••••••"
                 required
               />

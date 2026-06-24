@@ -4,7 +4,7 @@ import { authRepository, AuthUser } from '../repositories/auth.repository.js';
 import { RegisterInput, LoginInput, OAuthLoginInput } from '../schema/auth.schema.js';
 import { ProviderVerifier } from '../utils/provider-verifier.js';
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3002';
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || (process.env.LOCAL_DEV === 'true' ? 'http://localhost:3002' : 'http://user-service:3002');
 
 export class AuthService {
   async register(input: RegisterInput): Promise<{ userId: string; role: string }> {

@@ -16,12 +16,12 @@ export const DarkColors = {
   glass: "rgba(20, 22, 46, 0.7)",
   gradientPrimary: ["#00F2FF", "#7000FF"],
   // Input specific
-  inputBackground: "#14162E",
+  inputBackground: "#1F2937",
   inputBorder: "rgba(255, 255, 255, 0.08)",
   inputFocusBorder: "#00F2FF",
-  inputText: "#FFFFFF",
-  inputPlaceholder: "rgba(255, 255, 255, 0.4)",
-  cursor: "#00F2FF",
+  inputText: "#F9FAFB",
+  inputPlaceholder: "#9CA3AF",
+  cursor: "#F9FAFB",
 };
 
 export const LightColors = {
@@ -45,9 +45,9 @@ export const LightColors = {
   inputBackground: "#FFFFFF",
   inputBorder: "rgba(0, 0, 0, 0.15)",
   inputFocusBorder: "#0088CC",
-  inputText: "#131415ff",
-  inputPlaceholder: "rgba(26, 29, 32, 0.4)",
-  cursor: "#0088CC",
+  inputText: "#111827",
+  inputPlaceholder: "#6B7280",
+  cursor: "#111827",
 };
 
 // Fallback to dark theme

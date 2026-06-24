@@ -294,10 +294,13 @@ input[type="password"],
 input[type="number"],
 select {
   font-family: 'Outfit', -apple-system, sans-serif;
+  color: #F9FAFB !important;
+  background-color: #1F2937 !important;
 }
 
 input::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: #9CA3AF !important;
+  opacity: 1; /* Ensure placeholder opacity is full */
 }
 
 /* ─── Select Dropdown ───────────────────────────────────────── */
