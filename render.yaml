@@ -1,0 +1,97 @@
+# DRAVIO Platform — Render Blueprint
+# This deploys the gateway-service as the single public-facing service on Render.
+# All microservices (auth, user, billing, payment, marketplace) run in the same process
+# via localhost port routing, with Render Postgres and Redis as managed backing services.
+#
+# Deploy: render blueprint launch
+# Or link this file in Render Dashboard → New → Blueprint
+
+services:
+  # ─────────────────────────────────────────────────────────────────
+  # GATEWAY SERVICE — Public API (HTTP + WebSocket)
+  # All microservice traffic is proxied through this single entry point.
+  # ─────────────────────────────────────────────────────────────────
+  - type: web
+    name: dravio-gateway
+    runtime: docker
+    dockerfilePath: ./services/gateway-service/Dockerfile.render
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      # ── JWT (Required) ────────────────────────────────────────────
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random string
+      # ── Database (auto-injected from Render Postgres below) ───────
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dravio-postgres
+          property: connectionString
+      # ── Redis (auto-injected from Render Redis below) ─────────────
+      - key: REDIS_URL
+        fromService:
+          name: dravio-redis
+          type: redis
+          property: connectionString
+      # ── CORS (Update with your Vercel domain) ────────────────────
+      - key: CORS_ORIGINS
+        value: https://buyer-web-henna.vercel.app,https://admin-portal-weld-seven.vercel.app
+      # ── Internal Service URLs (co-located via localhost) ──────────
+      - key: AUTH_SERVICE_URL
+        value: http://localhost:3000
+      - key: USER_SERVICE_URL
+        value: http://localhost:3002
+      - key: MARKETPLACE_SERVICE_URL
+        value: http://localhost:3003
+      - key: BILLING_SERVICE_URL
+        value: http://localhost:3006
+      - key: PAYMENT_SERVICE_URL
+        value: http://localhost:3005
+      - key: ADMIN_SERVICE_URL
+        value: http://localhost:3008
+      # ── Payments (Optional — add values in Render dashboard) ──────
+      - key: STRIPE_SECRET_KEY
+        value: ""
+      - key: STRIPE_WEBHOOK_SECRET
+        value: ""
+      - key: MPESA_ENV
+        value: sandbox
+      - key: MPESA_CONSUMER_KEY
+        value: ""
+      - key: MPESA_CONSUMER_SECRET
+        value: ""
+      - key: MPESA_PASSKEY
+        value: ""
+      - key: MPESA_SHORTCODE
+        value: ""
+      - key: USD_TO_KES_RATE
+        value: "155.0"
+      # ── OTP / Twilio (Optional) ───────────────────────────────────
+      - key: TWILIO_ACCOUNT_SID
+        value: ""
+      - key: TWILIO_AUTH_TOKEN
+        value: ""
+      - key: TWILIO_VERIFY_SERVICE_SID
+        value: ""
+      # ── OAuth (Optional) ─────────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        value: ""
+      - key: APPLE_CLIENT_ID
+        value: ""
+
+# ─────────────────────────────────────────────────────────────────
+# MANAGED DATABASES
+# ─────────────────────────────────────────────────────────────────
+databases:
+  - name: dravio-postgres
+    databaseName: dravio_production
+    user: dravio_user
+    plan: free
+
+  - name: dravio-redis
+    plan: free
+    ipAllowList: []

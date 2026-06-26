@@ -7,16 +7,19 @@ import { io as ClientIO } from 'socket.io-client';
 
 const isLocal = process.env.LOCAL_DEV === 'true';
 
+// In production (Render), all services run co-located.
+// Use env vars to override; defaults cover both Docker and Render co-located modes.
 const SERVICES = {
-  auth:        isLocal ? 'http://localhost:3000' : 'http://auth-service:3000',
-  user:        isLocal ? 'http://localhost:3002' : 'http://user-service:3002',
-  marketplace: isLocal ? 'http://localhost:3003' : 'http://marketplace-service:3000',
-  session:     isLocal ? 'http://localhost:3005' : 'http://session-service:3005',
-  payment:     isLocal ? 'http://localhost:3005' : 'http://payment-service:3005',
-  billing:     isLocal ? 'http://localhost:3006' : 'http://billing-service:3006',
-  isp:         isLocal ? 'http://localhost:8083' : 'http://isp-service:8080',
-  admin:       isLocal ? 'http://localhost:3008' : 'http://admin-service:3008',
+  auth:        process.env.AUTH_SERVICE_URL        || (isLocal ? 'http://localhost:3000' : 'http://localhost:3000'),
+  user:        process.env.USER_SERVICE_URL        || (isLocal ? 'http://localhost:3002' : 'http://localhost:3002'),
+  marketplace: process.env.MARKETPLACE_SERVICE_URL || (isLocal ? 'http://localhost:3003' : 'http://localhost:3003'),
+  session:     process.env.SESSION_SERVICE_URL     || (isLocal ? 'http://localhost:3005' : 'http://localhost:3005'),
+  payment:     process.env.PAYMENT_SERVICE_URL     || (isLocal ? 'http://localhost:3005' : 'http://localhost:3005'),
+  billing:     process.env.BILLING_SERVICE_URL     || (isLocal ? 'http://localhost:3006' : 'http://localhost:3006'),
+  isp:         process.env.ISP_SERVICE_URL         || (isLocal ? 'http://localhost:8083' : 'http://localhost:8083'),
+  admin:       process.env.ADMIN_SERVICE_URL       || (isLocal ? 'http://localhost:3008' : 'http://localhost:3008'),
 } as const;
+
 
 const fastify = Fastify({ logger: true });
 
@@ -40,7 +43,7 @@ async function build() {
 
   await fastify.register(cors, {
     origin: corsOrigin,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
@@ -209,7 +212,8 @@ function connectUpstreamSockets(io: SocketIOServer) {
 const start = async () => {
   try {
     await build();
-    await fastify.listen({ port: 8080, host: '0.0.0.0' });
+    const port = parseInt(process.env.PORT || '8080');
+    await fastify.listen({ port, host: '0.0.0.0' });
 
     const allowedOrigins = process.env.CORS_ORIGINS
       ? process.env.CORS_ORIGINS.split(',')
@@ -277,7 +281,7 @@ const start = async () => {
 
     connectUpstreamSockets(io);
 
-    fastify.log.info('✅ Gateway ready on http://0.0.0.0:8080  (Socket.io on ws://0.0.0.0:8080)');
+    fastify.log.info(`✅ Gateway ready on http://0.0.0.0:${port}  (Socket.io on ws://0.0.0.0:${port})`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

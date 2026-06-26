@@ -6,20 +6,35 @@ const kafka = new Kafka({
 });
 
 let producerInstance: Producer | null = null;
+const kafkaAvailable = !!process.env.KAFKA_BROKERS || !!process.env.KAFKA_URL;
 
 export const producer = {
   connect: async () => {
+    if (!kafkaAvailable) {
+      console.warn('[Payment] Kafka not configured — event publishing disabled.');
+      return;
+    }
     if (!producerInstance) {
       producerInstance = kafka.producer();
-      await producerInstance.connect();
-      console.log('Payment service connected to Kafka');
+      try {
+        await producerInstance.connect();
+        console.log('Payment service connected to Kafka');
+      } catch (err) {
+        console.warn(`[Payment] Kafka connect failed, continuing without event publishing: ${err}`);
+        producerInstance = null;
+      }
     }
   },
   send: async (payload: { topic: string, messages: { key?: string, value: string }[] }) => {
     if (!producerInstance) {
-      await producer.connect();
+      console.warn(`[Payment] Kafka unavailable — skipping event publish to ${payload.topic}`);
+      return;
     }
-    await producerInstance!.send(payload);
+    try {
+      await producerInstance.send(payload);
+    } catch (err) {
+      console.warn(`[Payment] Failed to publish Kafka event: ${err}`);
+    }
   },
   disconnect: async () => {
     if (producerInstance) {
@@ -28,3 +43,4 @@ export const producer = {
     }
   }
 };
+

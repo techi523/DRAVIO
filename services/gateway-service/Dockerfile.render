@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────────
+# DRAVIO Gateway — Render Production Dockerfile
+#
+# This multi-stage build:
+# 1. Installs dependencies for the workspace packages
+# 2. Builds the auth-middleware shared package
+# 3. Installs and builds all microservices
+# 4. Starts all services in a single container via a process manager
+#
+# Single-container approach: Gateway (8080) + Auth (3000) + User (3002)
+# + Marketplace (3003) + Billing (3006) + Payment (3005)
+# ─────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS base
+RUN apk add --no-cache python3 make g++
+WORKDIR /app
+
+# ── Stage 1: Install monorepo root (for workspace resolution) ─────────
+FROM base AS workspace-setup
+COPY package.json package-lock.json ./
+COPY packages/auth-middleware/package.json ./packages/auth-middleware/
+COPY packages/shared-config/tsconfig.json ./packages/shared-config/
+COPY tsconfig.json ./
+
+# Install root + workspace packages
+RUN npm install --include=dev
+
+# ── Stage 2: Build shared auth-middleware package ─────────────────────
+FROM workspace-setup AS auth-middleware-build
+COPY packages/auth-middleware/ ./packages/auth-middleware/
+WORKDIR /app/packages/auth-middleware
+RUN npm run build 2>/dev/null || npx tsc
+
+# ── Stage 3: Build all microservices ─────────────────────────────────
+FROM auth-middleware-build AS services-build
+WORKDIR /app
+
+# Copy all service source files
+COPY services/auth-service/ ./services/auth-service/
+COPY services/user-service/ ./services/user-service/
+COPY services/marketplace-service/ ./services/marketplace-service/
+COPY services/billing-service/ ./services/billing-service/
+COPY services/payment-service/ ./services/payment-service/
+COPY services/gateway-service/ ./services/gateway-service/
+
+# Install dependencies for each service
+RUN cd services/auth-service && npm install --include=dev
+RUN cd services/user-service && npm install --include=dev
+RUN cd services/marketplace-service && npm install --include=dev
+RUN cd services/billing-service && npm install --include=dev
+RUN cd services/payment-service && npm install --include=dev
+RUN cd services/gateway-service && npm install --include=dev
+
+# Build each service (TypeScript -> JavaScript)
+RUN cd services/auth-service && npm run build
+RUN cd services/user-service && npm run build
+RUN cd services/marketplace-service && npm run build
+RUN cd services/billing-service && npm run build
+RUN cd services/payment-service && npm run build
+RUN cd services/gateway-service && npm run build
+
+# ── Stage 4: Production runtime image ────────────────────────────────
+FROM node:20-alpine AS production
+RUN apk add --no-cache tini
+
+WORKDIR /app
+
+# Copy built artifacts from build stage
+COPY --from=services-build /app/packages /app/packages
+COPY --from=services-build /app/services/auth-service/dist /app/services/auth-service/dist
+COPY --from=services-build /app/services/auth-service/node_modules /app/services/auth-service/node_modules
+COPY --from=services-build /app/services/auth-service/package.json /app/services/auth-service/
+COPY --from=services-build /app/services/user-service/dist /app/services/user-service/dist
+COPY --from=services-build /app/services/user-service/node_modules /app/services/user-service/node_modules
+COPY --from=services-build /app/services/user-service/package.json /app/services/user-service/
+COPY --from=services-build /app/services/marketplace-service/dist /app/services/marketplace-service/dist
+COPY --from=services-build /app/services/marketplace-service/node_modules /app/services/marketplace-service/node_modules
+COPY --from=services-build /app/services/marketplace-service/package.json /app/services/marketplace-service/
+COPY --from=services-build /app/services/billing-service/dist /app/services/billing-service/dist
+COPY --from=services-build /app/services/billing-service/node_modules /app/services/billing-service/node_modules
+COPY --from=services-build /app/services/billing-service/package.json /app/services/billing-service/
+COPY --from=services-build /app/services/payment-service/dist /app/services/payment-service/dist
+COPY --from=services-build /app/services/payment-service/node_modules /app/services/payment-service/node_modules
+COPY --from=services-build /app/services/payment-service/package.json /app/services/payment-service/
+COPY --from=services-build /app/services/gateway-service/dist /app/services/gateway-service/dist
+COPY --from=services-build /app/services/gateway-service/node_modules /app/services/gateway-service/node_modules
+COPY --from=services-build /app/services/gateway-service/package.json /app/services/gateway-service/
+
+# Copy startup script
+COPY services/gateway-service/start-all.sh /app/start-all.sh
+RUN chmod +x /app/start-all.sh
+
+# Render injects PORT dynamically — do NOT hardcode
+EXPOSE 8080
+
+# Use tini as PID 1 for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["/app/start-all.sh"]
