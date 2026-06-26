@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@fastify/jwt": "^8.0.0",
+    "@types/node": "^20.19.41",
     "fastify": "^4.26.2",
     "typescript": "^5.4.2"
   },
