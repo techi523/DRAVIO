@@ -16,7 +16,7 @@ WORKDIR /app
 
 # ── Stage 1: Install monorepo root (for workspace resolution) ─────────
 FROM base AS workspace-setup
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY packages/auth-middleware/package.json ./packages/auth-middleware/
 COPY packages/shared-config/tsconfig.json ./packages/shared-config/
 COPY tsconfig.json ./
