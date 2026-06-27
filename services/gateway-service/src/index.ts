@@ -4,6 +4,7 @@ import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import compress from '@fastify/compress';
 import { Server as SocketIOServer } from 'socket.io';
 import { io as ClientIO } from 'socket.io-client';
 
@@ -60,6 +61,8 @@ async function build() {
     max: 200,
     timeWindow: '1 minute'
   });
+
+  await fastify.register(compress, { global: true });
 
   // ── JWT ────────────────────────────────────────────────────────────────────
   await fastify.register(jwt, {
@@ -293,6 +296,20 @@ const start = async () => {
     });
 
     connectUpstreamSockets(io);
+
+    // ── Graceful Shutdown ─────────────────────────────────────────────────────
+    const shutdown = async (signal: string) => {
+      fastify.log.info(`[gateway] Received ${signal}. Shutting down gracefully...`);
+      io.close(() => {
+        fastify.log.info('[gateway] Socket.IO connections closed.');
+      });
+      await fastify.close();
+      fastify.log.info('[gateway] Fastify server closed.');
+      process.exit(0);
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
 
     fastify.log.info(`✅ Gateway ready on http://0.0.0.0:${port}  (Socket.io on ws://0.0.0.0:${port})`);
   } catch (err) {

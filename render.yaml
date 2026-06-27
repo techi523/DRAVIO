@@ -8,6 +8,14 @@
 
 services:
   # ─────────────────────────────────────────────────────────────────
+  # REDIS CACHE
+  # ─────────────────────────────────────────────────────────────────
+  - type: redis
+    name: dravio-redis
+    plan: free
+    ipAllowList: []
+
+  # ─────────────────────────────────────────────────────────────────
   # GATEWAY SERVICE — Public API (HTTP + WebSocket)
   # All microservice traffic is proxied through this single entry point.
   # ─────────────────────────────────────────────────────────────────
@@ -83,10 +91,6 @@ services:
       - key: APPLE_CLIENT_ID
         value: ""
 
-  - type: redis
-    name: dravio-redis
-    plan: free
-    ipAllowList: []
 
 # ─────────────────────────────────────────────────────────────────
 # MANAGED DATABASES
