@@ -39,17 +39,23 @@ PORT=3006 \
 BILLING_PID=$!
 
 # ── Payment Service (port 3005) ───────────────────────────────────────
-echo "[5/6] Starting Payment Service on port 3005..."
+echo "[5/7] Starting Payment Service on port 3005..."
 PORT=3005 \
   node /app/services/payment-service/dist/index.js &
 PAYMENT_PID=$!
+
+# ── Admin Service (port 3008) ─────────────────────────────────────────
+echo "[6/7] Starting Admin Service on port 3008..."
+PORT=3008 \
+  node /app/services/admin-service/dist/index.js &
+ADMIN_PID=$!
 
 # ── Wait for services to initialize ──────────────────────────────────
 echo "⏳ Waiting for services to initialize (3s)..."
 sleep 3
 
 # ── Gateway Service (Render-injected PORT) ────────────────────────────
-echo "[6/6] Starting Gateway Service on port ${PORT:-8080}..."
+echo "[7/7] Starting Gateway Service on port ${PORT:-8080}..."
 AUTH_SERVICE_URL=http://localhost:3000 \
 USER_SERVICE_URL=http://localhost:3002 \
 MARKETPLACE_SERVICE_URL=http://localhost:3003 \
@@ -60,5 +66,5 @@ PAYMENT_SERVICE_URL=http://localhost:3005 \
 echo "✅ All DRAVIO services started."
 
 # If gateway exits, kill all child processes
-trap "kill $AUTH_PID $USER_PID $MARKETPLACE_PID $BILLING_PID $PAYMENT_PID 2>/dev/null; exit" TERM INT EXIT
+trap "kill $AUTH_PID $USER_PID $MARKETPLACE_PID $BILLING_PID $PAYMENT_PID $ADMIN_PID 2>/dev/null; exit" TERM INT EXIT
 wait

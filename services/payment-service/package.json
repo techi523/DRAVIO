@@ -18,8 +18,6 @@
     "fastify": "^4.26.2",
     "kafkajs": "^2.2.4",
     "jsonwebtoken": "^9.0.3",
-    "mongodb": "^7.1.1",
-    "mongoose": "^9.4.1",
     "pg": "^8.11.3",
     "stripe": "^14.22.0",
     "zod": "^3.22.4"

@@ -40,6 +40,7 @@ COPY services/user-service/ ./services/user-service/
 COPY services/marketplace-service/ ./services/marketplace-service/
 COPY services/billing-service/ ./services/billing-service/
 COPY services/payment-service/ ./services/payment-service/
+COPY services/admin-service/ ./services/admin-service/
 COPY services/gateway-service/ ./services/gateway-service/
 
 # Install dependencies for each service
@@ -48,6 +49,7 @@ RUN cd services/user-service && npm install --include=dev
 RUN cd services/marketplace-service && npm install --include=dev
 RUN cd services/billing-service && npm install --include=dev
 RUN cd services/payment-service && npm install --include=dev
+RUN cd services/admin-service && npm install --include=dev
 RUN cd services/gateway-service && npm install --include=dev
 
 # Build each service (TypeScript -> JavaScript)
@@ -56,6 +58,7 @@ RUN cd services/user-service && npm run build
 RUN cd services/marketplace-service && npm run build
 RUN cd services/billing-service && npm run build
 RUN cd services/payment-service && npm run build
+RUN cd services/admin-service && npm run build
 RUN cd services/gateway-service && npm run build
 
 # ── Stage 4: Production runtime image ────────────────────────────────
@@ -81,6 +84,9 @@ COPY --from=services-build /app/services/billing-service/package.json /app/servi
 COPY --from=services-build /app/services/payment-service/dist /app/services/payment-service/dist
 COPY --from=services-build /app/services/payment-service/node_modules /app/services/payment-service/node_modules
 COPY --from=services-build /app/services/payment-service/package.json /app/services/payment-service/
+COPY --from=services-build /app/services/admin-service/dist /app/services/admin-service/dist
+COPY --from=services-build /app/services/admin-service/node_modules /app/services/admin-service/node_modules
+COPY --from=services-build /app/services/admin-service/package.json /app/services/admin-service/
 COPY --from=services-build /app/services/gateway-service/dist /app/services/gateway-service/dist
 COPY --from=services-build /app/services/gateway-service/node_modules /app/services/gateway-service/node_modules
 COPY --from=services-build /app/services/gateway-service/package.json /app/services/gateway-service/

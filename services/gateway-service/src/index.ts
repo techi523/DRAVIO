@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import proxy from '@fastify/http-proxy';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import { Server as SocketIOServer } from 'socket.io';
 import { io as ClientIO } from 'socket.io-client';
 
@@ -46,6 +48,17 @@ async function build() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+  });
+
+  // ── Security Hardening ─────────────────────────────────────────────────────
+  await fastify.register(helmet, {
+    global: true,
+    contentSecurityPolicy: false,
+  });
+
+  await fastify.register(rateLimit, {
+    max: 200,
+    timeWindow: '1 minute'
   });
 
   // ── JWT ────────────────────────────────────────────────────────────────────
