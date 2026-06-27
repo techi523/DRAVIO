@@ -16,8 +16,9 @@
     "@types/jsonwebtoken": "^9.0.10",
     "axios": "^1.14.0",
     "fastify": "^4.26.2",
-    "kafkajs": "^2.2.4",
     "jsonwebtoken": "^9.0.3",
+    "kafkajs": "^2.2.4",
+    "mongoose": "^9.7.3",
     "pg": "^8.11.3",
     "stripe": "^14.22.0",
     "zod": "^3.22.4"
