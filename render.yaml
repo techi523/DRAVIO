@@ -83,6 +83,11 @@ services:
       - key: APPLE_CLIENT_ID
         value: ""
 
+  - type: redis
+    name: dravio-redis
+    plan: free
+    ipAllowList: []
+
 # ─────────────────────────────────────────────────────────────────
 # MANAGED DATABASES
 # ─────────────────────────────────────────────────────────────────
@@ -91,7 +96,3 @@ databases:
     databaseName: dravio_production
     user: dravio_user
     plan: free
-
-  - name: dravio-redis
-    plan: free
-    ipAllowList: []
