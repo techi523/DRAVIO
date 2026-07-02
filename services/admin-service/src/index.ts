@@ -15,10 +15,10 @@ const fastify: FastifyInstance = Fastify({
 
 // Internal Service URLs
 const SERVICES = {
-  session: 'http://session-service:3005',
-  user: 'http://user-service:3002',
-  billing: 'http://billing-service:3006',
-  marketplace: 'http://marketplace-service:3000'
+  session: process.env.SESSION_SERVICE_URL || 'http://localhost:3015',
+  user: process.env.USER_SERVICE_URL || 'http://localhost:3002',
+  billing: process.env.BILLING_SERVICE_URL || 'http://localhost:3006',
+  marketplace: process.env.MARKETPLACE_SERVICE_URL || 'http://localhost:3003'
 };
 
 const kafka = new Kafka({

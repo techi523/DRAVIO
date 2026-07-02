@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { TerminalSquare, Lock, Eye, EyeOff } from 'lucide-react';
 import { api } from '@/lib/api';
+import { signInWithGoogle } from '@/lib/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -39,11 +40,19 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
-        throw new Error(`${provider} authentication is not fully configured yet.`);
+      let idToken: string;
+
+      if (provider === 'google') {
+        if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+          throw new Error('Google authentication is not configured. Set NEXT_PUBLIC_FIREBASE_API_KEY in Vercel.');
+        }
+        idToken = await signInWithGoogle();
+      } else {
+        // Apple, GitHub, Microsoft — requires additional OAuth app setup
+        throw new Error(`${provider.charAt(0).toUpperCase() + provider.slice(1)} SSO is not yet configured for this portal.`);
       }
-      
-      const data = await api.auth.oauthLogin(provider, { id_token: 'mock_token' }, 'ADMIN');
+
+      const data = await api.auth.oauthLogin(provider, { id_token: idToken }, 'ADMIN');
 
       if (data?.user?.role !== 'admin') throw new Error('Access Denied. Administrator privileges required.');
 

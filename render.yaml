@@ -1,19 +1,12 @@
-# DRAVIO Platform — Render Blueprint
-# This deploys the gateway-service as the single public-facing service on Render.
-# All microservices (auth, user, billing, payment, marketplace) run in the same process
-# via localhost port routing, with Render Postgres and Redis as managed backing services.
+# DRAVIO Platform — Render Blueprint (Legacy Reference)
+# Redis is now hosted on Upstash — the managed Render Redis service has been removed.
+# For new deployments, use Railway + railway.toml instead.
+# This file is kept as a reference for the Postgres database definition.
 #
 # Deploy: render blueprint launch
 # Or link this file in Render Dashboard → New → Blueprint
 
 services:
-  # ─────────────────────────────────────────────────────────────────
-  # REDIS CACHE
-  # ─────────────────────────────────────────────────────────────────
-  - type: redis
-    name: dravio-redis
-    plan: free
-    ipAllowList: []
 
   # ─────────────────────────────────────────────────────────────────
   # GATEWAY SERVICE — Public API (HTTP + WebSocket)
@@ -39,12 +32,10 @@ services:
         fromDatabase:
           name: dravio-postgres
           property: connectionString
-      # ── Redis (auto-injected from Render Redis below) ─────────────
+      # ── Redis (Upstash — set manually in dashboard) ──────────────
+      # Format: rediss://default:<password>@<host>.upstash.io:6379
       - key: REDIS_URL
-        fromService:
-          name: dravio-redis
-          type: redis
-          property: connectionString
+        value: "rediss://default:CHANGE_ME@CHANGE_ME.upstash.io:6379"
       # ── CORS (Update with your Vercel domain) ────────────────────
       - key: CORS_ORIGINS
         value: https://buyer-web-henna.vercel.app,https://admin-portal-weld-seven.vercel.app
@@ -85,9 +76,21 @@ services:
         value: ""
       - key: TWILIO_VERIFY_SERVICE_SID
         value: ""
-      # ── OAuth (Optional) ─────────────────────────────────────────
-      - key: GOOGLE_CLIENT_ID
+      # ── Firebase Admin SDK (Required for OAuth token verification) ──
+      - key: FIREBASE_PROJECT_ID
         value: ""
+      - key: FIREBASE_CLIENT_EMAIL
+        value: ""
+      - key: FIREBASE_PRIVATE_KEY
+        value: ""
+      # ── Cloudinary (Image Storage) ───────────────────────────────
+      - key: CLOUDINARY_CLOUD_NAME
+        value: ""
+      - key: CLOUDINARY_API_KEY
+        value: ""
+      - key: CLOUDINARY_API_SECRET
+        value: ""
+      # ── OAuth (Optional — GOOGLE_CLIENT_ID replaced by Firebase) ──
       - key: APPLE_CLIENT_ID
         value: ""
 

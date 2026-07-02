@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────
+# DRAVIO Platform — Railway Project Configuration (v2)
+#
+# This file is read by Railway during deployment.
+# Link your GitHub repo in the Railway Dashboard → New Project →
+# Deploy from GitHub → select this repo.
+#
+# Environment variables must be set in Railway Dashboard →
+# Service → Variables. See .env.production.template for all required keys.
+# ─────────────────────────────────────────────────────────────────────
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "services/gateway-service/Dockerfile.render"
+
+[deploy]
+startCommand = "/app/start-all.sh"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# ── Required Environment Variables ────────────────────────────────────
+# Set ALL of these in Railway Dashboard → Service → Variables:
+#
+# DATABASE_URL          - Railway Postgres connection string (auto-injected if using Railway Postgres plugin)
+# REDIS_URL             - Upstash TLS URL: rediss://default:<pw>@<host>.upstash.io:6379
+# JWT_SECRET            - Generate with: openssl rand -base64 64
+# FIREBASE_PROJECT_ID   - From Firebase Console → Project Settings
+# FIREBASE_CLIENT_EMAIL - From Firebase service account JSON
+# FIREBASE_PRIVATE_KEY  - From Firebase service account JSON (keep the \n line breaks)
+# CLOUDINARY_CLOUD_NAME - From Cloudinary Dashboard
+# CLOUDINARY_API_KEY    - From Cloudinary Dashboard
+# CLOUDINARY_API_SECRET - From Cloudinary Dashboard
+# CORS_ORIGINS          - Comma-separated: https://buyer-web-henna.vercel.app,https://admin-portal-weld-seven.vercel.app
+# STRIPE_SECRET_KEY     - sk_live_...
+# STRIPE_WEBHOOK_SECRET - whsec_...
+# MPESA_ENV             - production or sandbox
+# MPESA_CONSUMER_KEY    - From Daraja API
+# MPESA_CONSUMER_SECRET - From Daraja API
+# MPESA_PASSKEY         - From Daraja API
+# MPESA_SHORTCODE       - Your Daraja short code
+# NODE_ENV              - production

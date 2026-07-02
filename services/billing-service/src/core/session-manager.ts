@@ -17,7 +17,9 @@ export class SessionManager {
       throw new Error('INSUFFICIENT_FUNDS');
     }
 
-    const sessionUrl = process.env.LOCAL_DEV === 'true' ? 'http://localhost:3005/v1/sessions' : 'http://session-service:3005/v1/sessions';
+    const sessionUrl = process.env.SESSION_SERVICE_URL
+      ? `${process.env.SESSION_SERVICE_URL}/v1/sessions`
+      : (process.env.LOCAL_DEV === 'true' ? 'http://localhost:3005/v1/sessions' : 'http://session-service:3005/v1/sessions');
     const res = await fetch(sessionUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

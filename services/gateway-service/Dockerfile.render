@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────
-# DRAVIO Gateway — Render Production Dockerfile
+# DRAVIO Gateway — Railway/Production Dockerfile
 #
 # This multi-stage build:
 # 1. Installs dependencies for the workspace packages
@@ -61,6 +61,15 @@ RUN cd services/payment-service && npm run build
 RUN cd services/admin-service && npm run build
 RUN cd services/gateway-service && npm run build
 
+# ── Stage Go Build: Build session-service Go binary ───────────────────
+FROM golang:1.24-alpine AS go-builder
+WORKDIR /app
+RUN apk add --no-cache git
+COPY services/session-service/go.mod services/session-service/go.sum ./
+RUN go mod download
+COPY services/session-service/. .
+RUN go build -o session-service cmd/main.go
+
 # ── Stage 4: Production runtime image ────────────────────────────────
 FROM node:20-alpine AS production
 RUN apk add --no-cache tini
@@ -90,6 +99,9 @@ COPY --from=services-build /app/services/admin-service/package.json /app/service
 COPY --from=services-build /app/services/gateway-service/dist /app/services/gateway-service/dist
 COPY --from=services-build /app/services/gateway-service/node_modules /app/services/gateway-service/node_modules
 COPY --from=services-build /app/services/gateway-service/package.json /app/services/gateway-service/
+
+# Copy Go session-service binary
+COPY --from=go-builder /app/session-service /app/session-service
 
 # Copy startup script
 COPY services/gateway-service/start-all.sh /app/start-all.sh
