@@ -61,7 +61,7 @@ services:
       dockerfile: services/metering-service/Dockerfile
     environment:
       - KAFKA_URL=kafka:9092
-      - REDIS_URL=redis:6379
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - kafka
       - redis
@@ -160,7 +160,7 @@ services:
       - "8085:3005"
     environment:
       - KAFKA_URL=kafka:9092
-      - REDIS_URL=redis:6379
+      - REDIS_URL=redis://redis:6379
     depends_on:
       kafka:
         condition: service_started
@@ -192,7 +192,7 @@ services:
       - "3003:3000"
     environment:
       - KAFKA_URL=kafka:9092
-      - REDIS_URL=redis:6379
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
       kafka:

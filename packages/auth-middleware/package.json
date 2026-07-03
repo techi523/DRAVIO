@@ -8,13 +8,13 @@
   "scripts": {
     "build": "tsc"
   },
-  "devDependencies": {
-    "@fastify/jwt": "^8.0.0",
-    "@types/node": "^20.19.41",
-    "fastify": "^4.26.2",
-    "typescript": "^5.4.2"
-  },
   "dependencies": {
+    "@fastify/jwt": "^8.0.0",
+    "fastify": "^4.26.2",
     "fastify-plugin": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "typescript": "^5.4.2"
   }
 }

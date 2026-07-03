@@ -5,8 +5,7 @@ import { authMiddleware } from '@dravio/auth-middleware';
 import { RegisterSchema, LoginSchema } from './schema/auth.schema.js';
 import { authService } from './services/auth.service.js';
 import { sendSuccess, sendError } from './utils/response.js';
-// Initialize Firebase Admin SDK at startup (validates env vars immediately)
-import './utils/firebase-admin.js';
+import { getFirebaseAuth } from './utils/firebase-admin.js';
 
 const fastify: FastifyInstance = Fastify({ 
   logger: {
@@ -31,16 +30,8 @@ async function init() {
     throw new Error('FATAL: JWT_SECRET environment variable is required. Refusing to start with insecure defaults.');
   }
 
-  // Firebase Admin SDK env var guard — validated at import above,
-  // but we double-check here to produce a clear startup error message.
-  const requiredFirebaseVars = ['FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL', 'FIREBASE_PRIVATE_KEY'];
-  const missingFirebase = requiredFirebaseVars.filter(v => !process.env[v]);
-  if (missingFirebase.length > 0) {
-    throw new Error(
-      `FATAL: Missing Firebase Admin SDK environment variables: ${missingFirebase.join(', ')}. ` +
-      'Set these in Railway Dashboard → Service → Variables (see .env.production.template).'
-    );
-  }
+  // Initialize Firebase Admin SDK (gracefully if env vars are missing)
+  getFirebaseAuth();
 
   await fastify.register(cors);
   await fastify.register(jwt, {

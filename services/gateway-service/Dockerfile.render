@@ -76,28 +76,28 @@ RUN apk add --no-cache tini
 
 WORKDIR /app
 
-# Copy built artifacts from build stage
+# Copy root node_modules (all hoisted dependencies live here, including fastify)
+COPY --from=services-build /app/node_modules /app/node_modules
+# Remove devDependencies from root to slim production image
+RUN npm prune --omit=dev 2>/dev/null || true
+
+# Copy shared packages
 COPY --from=services-build /app/packages /app/packages
+
+# Copy built artifacts from build stage
 COPY --from=services-build /app/services/auth-service/dist /app/services/auth-service/dist
-COPY --from=services-build /app/services/auth-service/node_modules /app/services/auth-service/node_modules
 COPY --from=services-build /app/services/auth-service/package.json /app/services/auth-service/
 COPY --from=services-build /app/services/user-service/dist /app/services/user-service/dist
-COPY --from=services-build /app/services/user-service/node_modules /app/services/user-service/node_modules
 COPY --from=services-build /app/services/user-service/package.json /app/services/user-service/
 COPY --from=services-build /app/services/marketplace-service/dist /app/services/marketplace-service/dist
-COPY --from=services-build /app/services/marketplace-service/node_modules /app/services/marketplace-service/node_modules
 COPY --from=services-build /app/services/marketplace-service/package.json /app/services/marketplace-service/
 COPY --from=services-build /app/services/billing-service/dist /app/services/billing-service/dist
-COPY --from=services-build /app/services/billing-service/node_modules /app/services/billing-service/node_modules
 COPY --from=services-build /app/services/billing-service/package.json /app/services/billing-service/
 COPY --from=services-build /app/services/payment-service/dist /app/services/payment-service/dist
-COPY --from=services-build /app/services/payment-service/node_modules /app/services/payment-service/node_modules
 COPY --from=services-build /app/services/payment-service/package.json /app/services/payment-service/
 COPY --from=services-build /app/services/admin-service/dist /app/services/admin-service/dist
-COPY --from=services-build /app/services/admin-service/node_modules /app/services/admin-service/node_modules
 COPY --from=services-build /app/services/admin-service/package.json /app/services/admin-service/
 COPY --from=services-build /app/services/gateway-service/dist /app/services/gateway-service/dist
-COPY --from=services-build /app/services/gateway-service/node_modules /app/services/gateway-service/node_modules
 COPY --from=services-build /app/services/gateway-service/package.json /app/services/gateway-service/
 
 # Copy Go session-service binary

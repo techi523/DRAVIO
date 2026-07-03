@@ -1,6 +1,19 @@
 import { Redis } from 'ioredis';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+let redis: Redis | null = null;
+try {
+  redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+  redis.on('error', (err) => {
+    console.warn('[Marketplace Redis] Connection error — operating in degraded mode:', err.message);
+  });
+} catch (err) {
+  console.warn('[Marketplace Redis] Failed to initialize — operating in degraded mode');
+}
+
+function getRedis(): Redis | null {
+  if (!redis || redis.status !== 'ready') return null;
+  return redis;
+}
 
 export interface SellerMetadata {
   id: string;
@@ -16,8 +29,13 @@ export interface SellerMetadata {
 
 export class MarketplaceRepository {
   async updateHeartbeat(sellerId: string, input: any) {
-    await redis.geoadd('active_sellers_geo', input.lon, input.lat, sellerId);
-    await redis.hset(`seller:${sellerId}`, {
+    const r = getRedis();
+    if (!r) {
+      console.warn('[Marketplace] Redis unavailable — heartbeat not stored');
+      return;
+    }
+    await r.geoadd('active_sellers_geo', input.lon, input.lat, sellerId);
+    await r.hset(`seller:${sellerId}`, {
       pricing_model: input.pricing.model,
       price: input.pricing.rate.toString(),
       avg_speed: (input.metrics?.avgSpeed || 50).toString(),
@@ -25,11 +43,17 @@ export class MarketplaceRepository {
       status: input.status || 'active',
       last_seen: Date.now().toString()
     });
-    await redis.expire(`seller:${sellerId}`, 300);
+    await r.expire(`seller:${sellerId}`, 300);
   }
 
   async searchSellers(input: { lat: number, lon: number, radius: number, unit: string }): Promise<SellerMetadata[]> {
-    const sellerIdsWithDist = await redis.geosearch(
+    const r = getRedis();
+    if (!r) {
+      console.warn('[Marketplace] Redis unavailable — returning empty seller results');
+      return [];
+    }
+
+    const sellerIdsWithDist = await r.geosearch(
       'active_sellers_geo',
       'FROMLONLAT', input.lon, input.lat,
       'BYRADIUS', input.radius, input.unit,
@@ -38,8 +62,7 @@ export class MarketplaceRepository {
 
     if (!sellerIdsWithDist || sellerIdsWithDist.length === 0) return [];
 
-    // Phase 6: Performance Optimization - Batch metadata lookups via Pipeline
-    const pipeline = redis.pipeline();
+    const pipeline = r.pipeline();
     sellerIdsWithDist.forEach(row => {
       pipeline.hgetall(`seller:${row[0]}`);
     });

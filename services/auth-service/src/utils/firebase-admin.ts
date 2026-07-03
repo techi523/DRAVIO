@@ -14,6 +14,9 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
+let _firebaseAuth: ReturnType<typeof getAuth> | null = null;
+let _firebaseEnabled = true;
+
 function initFirebaseAdmin() {
   // Avoid re-initializing in hot-reload / multi-import scenarios
   if (getApps().length > 0) {
@@ -22,25 +25,42 @@ function initFirebaseAdmin() {
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  // Railway stores the private key as a string with literal \n characters
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
   if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      'FATAL: Firebase Admin SDK requires FIREBASE_PROJECT_ID, ' +
-      'FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY environment variables.'
+    _firebaseEnabled = false;
+    console.warn(
+      'Firebase Admin SDK not configured — set FIREBASE_PROJECT_ID, ' +
+      'FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY environment variables. ' +
+      'OAuth/Google/Apple sign-in will fail.'
     );
+    return null;
   }
 
-  initializeApp({
-    credential: cert({ projectId, clientEmail, privateKey }),
-  });
-
-  return getAuth();
+  try {
+    initializeApp({
+      credential: cert({ projectId, clientEmail, privateKey }),
+    });
+    return getAuth();
+  } catch (err) {
+    _firebaseEnabled = false;
+    console.warn('Firebase Admin SDK initialization failed:', err);
+    return null;
+  }
 }
 
 /**
- * Pre-initialized Firebase Auth instance.
+ * Get the Firebase Auth instance. Returns null if Firebase is not configured.
  * Use firebaseAuth.verifyIdToken(idToken) to validate Google/Apple ID tokens.
+ */
+export function getFirebaseAuth() {
+  if (!_firebaseAuth && _firebaseEnabled) {
+    _firebaseAuth = initFirebaseAdmin();
+  }
+  return _firebaseAuth;
+}
+
+/**
+ * Pre-initialized Firebase Auth instance (may be null if not configured).
  */
 export const firebaseAuth = initFirebaseAdmin();

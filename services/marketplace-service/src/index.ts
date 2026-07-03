@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { authMiddleware } from '@dravio/auth-middleware';
 import { HeartbeatSchema, SearchSchema } from './schema/marketplace.schema.js';
 import { marketplaceService } from './services/marketplace.service.js';
@@ -26,7 +27,7 @@ async function init() {
   await fastify.register(cors);
   
   // Security Hardening: Rate Limiting
-  await fastify.register(import('@fastify/rate-limit'), {
+  await fastify.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute'
   });

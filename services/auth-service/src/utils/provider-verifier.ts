@@ -11,7 +11,7 @@
  *   issue OIDC ID tokens, so Firebase is not applicable.
  */
 import axios from 'axios';
-import { firebaseAuth } from './firebase-admin.js';
+import { getFirebaseAuth } from './firebase-admin.js';
 
 export interface VerifiedProviderUser {
   providerId: string;
@@ -25,7 +25,9 @@ export class ProviderVerifier {
    * The frontend obtains this token via Firebase JS SDK (signInWithPopup).
    */
   static async verifyGoogle(idToken: string): Promise<VerifiedProviderUser> {
-    const decoded = await firebaseAuth.verifyIdToken(idToken);
+    const fb = getFirebaseAuth();
+    if (!fb) throw new Error('Firebase Admin SDK not configured — cannot verify Google token');
+    const decoded = await fb.verifyIdToken(idToken);
     if (!decoded.uid) throw new Error('Invalid Google token: missing uid');
     return {
       providerId: decoded.uid,
@@ -40,7 +42,9 @@ export class ProviderVerifier {
    * Apple's JWKS endpoint, audience check, and nonce validation.
    */
   static async verifyApple(idToken: string): Promise<VerifiedProviderUser> {
-    const decoded = await firebaseAuth.verifyIdToken(idToken);
+    const fb = getFirebaseAuth();
+    if (!fb) throw new Error('Firebase Admin SDK not configured — cannot verify Apple token');
+    const decoded = await fb.verifyIdToken(idToken);
     if (!decoded.uid) throw new Error('Invalid Apple token: missing uid');
     return {
       providerId: decoded.uid,
