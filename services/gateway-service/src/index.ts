@@ -49,6 +49,7 @@ async function build() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+    strictPreflight: false,
   });
 
   // ── Security Hardening ─────────────────────────────────────────────────────
@@ -67,6 +68,22 @@ async function build() {
   // ── JWT ────────────────────────────────────────────────────────────────────
   await fastify.register(jwt, {
     secret: process.env.JWT_SECRET,
+  });
+
+    // ── Global Error Handler ──────────────────────────────────────────────────
+  fastify.setErrorHandler((error, request, reply) => {
+    if (error.code === 'FST_REPLY_FROM_INTERNAL_SERVER_ERROR' || error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+      return reply.status(502).send({
+        error: 'BAD_GATEWAY',
+        message: `Upstream service unavailable: ${request.url}`,
+        statusCode: 502,
+      });
+    }
+    fastify.log.error(error);
+    return reply.status(error.statusCode || 500).send({
+      error: error.message || 'INTERNAL_SERVER_ERROR',
+      statusCode: error.statusCode || 500,
+    });
   });
 
   // ── Health endpoints ───────────────────────────────────────────────────────
