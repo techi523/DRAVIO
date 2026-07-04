@@ -35,8 +35,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance, io: SocketIO
   const actionDispatcher = getActionDispatcher();
   ruleEngine.setDispatcher(actionDispatcher);
 
-  fastify.get('/health', async () => ({ status: 'ok', service: 'admin-service' }));
-
   fastify.get('/admin/telemetry', {
     preHandler: [requireRoles(['SUPER_ADMIN', 'SUPPORT_AGENT', 'SECURITY_ADMIN'])]
   }, async (req: FastifyRequest, reply: FastifyReply) => {
@@ -118,6 +116,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance, io: SocketIO
     const result = await actionDispatcher.dispatch({ targetType, targetId, action: actionName, payload, adminId });
     return result;
   });
+
+  if (!process.env.KAFKA_URL) {
+    fastify.log.warn('[Admin] KAFKA_URL not set — Admin Service entering autonomous mode (no live telemetry relay).');
+    return;
+  }
 
   try {
     await actionDispatcher.connect();

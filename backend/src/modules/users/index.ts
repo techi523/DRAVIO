@@ -4,8 +4,6 @@ import { userRepository } from './repositories/user.repository.js';
 import { sendSuccess, sendError } from './utils/response.js';
 
 export async function registerUserRoutes(fastify: FastifyInstance) {
-  fastify.get('/health', async () => ({ status: 'ok', service: 'user-service' }));
-
   fastify.post('/v1/users', async (request: FastifyRequest, reply: FastifyReply) => {
     const result = CreateProfileSchema.safeParse(request.body);
     if (!result.success) {

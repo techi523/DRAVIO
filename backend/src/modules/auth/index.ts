@@ -8,8 +8,6 @@ import { getFirebaseAuth } from './utils/firebase-admin.js';
 export async function registerAuthRoutes(fastify: FastifyInstance) {
   getFirebaseAuth();
 
-  fastify.get('/health', async () => ({ status: 'ok', service: 'auth-service', timestamp: new Date().toISOString() }));
-
   fastify.post('/v1/auth/register', async (request: FastifyRequest, reply: FastifyReply) => {
     const result = RegisterSchema.safeParse(request.body);
     if (!result.success) {

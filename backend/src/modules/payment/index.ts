@@ -4,8 +4,6 @@ import { paymentService } from './services/payment.service.js';
 import { sendSuccess, sendError } from './utils/response.js';
 
 export async function registerPaymentRoutes(fastify: FastifyInstance) {
-  fastify.get('/health', async () => ({ status: 'ok', service: 'payment-service' }));
-
   fastify.post('/v1/payments/initiate', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const result = InitiatePaymentSchema.safeParse(request.body);
     if (!result.success) {

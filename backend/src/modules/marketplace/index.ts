@@ -4,8 +4,6 @@ import { marketplaceService } from './services/marketplace.service.js';
 import { sendSuccess, sendError } from './utils/response.js';
 
 export async function registerMarketplaceRoutes(fastify: FastifyInstance) {
-  fastify.get('/health', async () => ({ status: 'ok', service: 'marketplace-service' }));
-
   fastify.post('/v1/marketplace/heartbeat', { preHandler: [(req, reply) => fastify.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const result = HeartbeatSchema.safeParse(request.body);
     if (!result.success) {

@@ -6,6 +6,9 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { ToastProvider } from "@/components/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { NeonAuthUIProvider } from "@neondatabase/auth/react";
+import { authClient } from "@/lib/auth/client";
+import "@neondatabase/auth/ui/css";
 import "./globals.css";
 
 function NavBar() {
@@ -119,7 +122,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <title>DRAVIO | Global Data Marketplace</title>
         <meta
@@ -141,12 +144,14 @@ export default function RootLayout({
       <body>
         <ErrorBoundary>
           <ToastProvider>
-            <AuthProvider>
-              <div className="mesh-bg" />
-              <NavBar />
-              <ConnectionStatus />
-              <main className="pt-24 min-h-screen">{children}</main>
-            </AuthProvider>
+            <NeonAuthUIProvider authClient={authClient}>
+              <AuthProvider>
+                <div className="mesh-bg" />
+                <NavBar />
+                <ConnectionStatus />
+                <main className="pt-24 min-h-screen">{children}</main>
+              </AuthProvider>
+            </NeonAuthUIProvider>
           </ToastProvider>
         </ErrorBoundary>
       </body>

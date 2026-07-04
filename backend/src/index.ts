@@ -127,23 +127,7 @@ async function start() {
   try {
     await build();
 
-    const port = parseInt(process.env.PORT || '8080');
-    await fastify.listen({ port, host: '0.0.0.0' });
-
-    // Initialize connections
-    const dbOk = await testConnection();
-    if (!dbOk) {
-      fastify.log.warn('Database connection failed - some features may be degraded');
-    }
-
-    const redis = getRedis();
-    if (redis) {
-      fastify.log.info('Redis client initialized');
-    } else {
-      fastify.log.warn('Redis not available - caching features degraded');
-    }
-
-    // Socket.IO on the same port
+    // Socket.IO on the same port (must attach + register routes before fastify.listen())
     const io = new SocketIOServer(fastify.server, {
       cors: {
         origin: corsOrigin,
@@ -193,6 +177,22 @@ async function start() {
 
     // Register admin routes with Socket.IO
     await registerAdminRoutes(fastify, io);
+
+    const port = parseInt(process.env.PORT || '8080');
+    await fastify.listen({ port, host: '0.0.0.0' });
+
+    // Initialize connections
+    const dbOk = await testConnection();
+    if (!dbOk) {
+      fastify.log.warn('Database connection failed - some features may be degraded');
+    }
+
+    const redis = getRedis();
+    if (redis) {
+      fastify.log.info('Redis client initialized');
+    } else {
+      fastify.log.warn('Redis not available - caching features degraded');
+    }
 
     // Start background services
     startAnalyticsAggregator().catch(err => fastify.log.warn('[Analytics] Failed to start:', err));

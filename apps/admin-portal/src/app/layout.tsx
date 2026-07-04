@@ -2,6 +2,9 @@ import React from 'react';
 import './globals.css';
 import { SocketProvider } from "@/components/providers/socket-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { NeonAuthUIProvider } from "@neondatabase/auth/react";
+import { authClient } from "@/lib/auth/client";
+import "@neondatabase/auth/ui/css";
 
 export const metadata = {
   title: 'DRAVIO | Command Center',
@@ -14,11 +17,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="flex h-screen bg-[var(--bg-main)] text-[var(--fg-main)] overflow-hidden transition-colors duration-300">
         <ThemeProvider>
           <SocketProvider>
-            {children}
+            <NeonAuthUIProvider authClient={authClient}>
+              {children}
+            </NeonAuthUIProvider>
           </SocketProvider>
         </ThemeProvider>
       </body>

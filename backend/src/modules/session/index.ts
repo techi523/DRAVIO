@@ -17,8 +17,6 @@ interface Session {
 const SESSION_TTL = 24 * 60 * 60;
 
 export function registerSessionRoutes(fastify: FastifyInstance) {
-  fastify.get('/health', async () => ({ status: 'ok', service: 'session-service' }));
-
   fastify.post('/v1/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
     const { buyer_id, seller_id, region } = request.body as any;
 

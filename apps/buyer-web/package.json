@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@neondatabase/auth": "^0.4.2-beta",
     "clsx": "^2.1.1",
     "firebase": "^10.0.0",
     "lucide-react": "^0.468.0",
