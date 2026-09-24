@@ -5,21 +5,26 @@ import { ProviderVerifier } from '../utils/provider-verifier.js';
 import { createUserProfile } from '../../users/repositories/user.repository.js';
 
 export class AuthService {
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
   async register(input: RegisterInput): Promise<{ userId: string; role: string }> {
+    const email = this.normalizeEmail(input.email);
     const passwordHash = await bcrypt.hash(input.password, 10);
     
-    const existing = await authRepository.findByEmail(input.email);
+    const existing = await authRepository.findByEmail(email);
     if (existing) {
       throw new Error('EMAIL_ALREADY_EXISTS');
     }
 
     const role = input.role || 'BUYER';
-    const userId = await authRepository.create(input.email, passwordHash, role);
+    const userId = await authRepository.create(email, passwordHash, role);
     
     try {
       await createUserProfile({
         auth_user_id: userId,
-        email: input.email,
+        email,
         full_name: input.full_name,
         country_code: input.country_code,
         is_seller: role === 'SELLER',
@@ -33,7 +38,8 @@ export class AuthService {
   }
 
   async login(input: LoginInput) {
-    const user = await authRepository.findByEmail(input.email);
+    const email = this.normalizeEmail(input.email);
+    const user = await authRepository.findByEmail(email);
     if (!user || !user.password_hash) {
       throw new Error('INVALID_CREDENTIALS');
     }
@@ -68,7 +74,7 @@ export class AuthService {
     let user = await authRepository.findUserByProvider(input.provider, verifiedUser.providerId);
     
     if (!user) {
-      const emailToUse = verifiedUser.email;
+      const emailToUse = verifiedUser.email ? this.normalizeEmail(verifiedUser.email) : null;
       if (!emailToUse) {
         throw new Error('EMAIL_REQUIRED_FOR_NEW_OAUTH_ACCOUNT');
       }

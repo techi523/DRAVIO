@@ -5,6 +5,7 @@ import { useThemeColors } from '../theme/useThemeColors';
 import Input from '../components/Input';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
+import { storage } from '../services/storage';
 
 export default function Profile() {
   const t = (str: string) => str;
@@ -16,6 +17,8 @@ export default function Profile() {
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
   const [isOptimizerOpen, setIsOptimizerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
+  const [kycVerification, setKycVerification] = useState<number | null>(null);
   
   const [profile, setProfile] = useState({
     name: '',
@@ -46,11 +49,14 @@ export default function Profile() {
             };
             setProfile(p);
             setEditData(p);
+            setIsSeller(!!data.profile.is_seller);
+            setKycVerification(data.profile.kyc_level ?? null);
         }
         // Fetch real stats
         try {
             const statsData = await api.get<any>('/users/me/stats');
             if (statsData) {
+                setIsSeller(statsData.is_seller ?? isSeller);
                 setStats({
                     rating: statsData.rating?.toFixed(1) || '—',
                     sales: statsData.total_sales?.toString() || '—',
@@ -85,19 +91,13 @@ export default function Profile() {
   };
 
   const handleSavePayout = async () => {
-      setLoading(true);
-      try {
-          await api.put('/users/me/payout', {
-              method: payoutData.method,
-              account: payoutData.account
-          });
-          setIsPayoutOpen(false);
-          Alert.alert('Success', 'Payout settings securely saved.');
-      } catch (err: any) {
-          Alert.alert('Error', err.message || 'Failed to save payout settings.');
-      } finally {
-          setLoading(false);
-      }
+      // There is no server-side payout-defaults endpoint on this backend yet.
+      // Claiming success here would be fabricated — surface the real state.
+      setIsPayoutOpen(false);
+      Alert.alert(
+        'Not Available Yet',
+        'Payout preferences are not stored on the server in this build. To withdraw earnings, use the Wallet screen.'
+      );
   };
 
   return (
@@ -116,21 +116,17 @@ export default function Profile() {
                 <Text style={[styles.name, { color: colors.foreground }]}>{profile.name}</Text>
                 <Text style={[styles.email, { color: colors.textMuted }]}>{profile.email}</Text>
                 <View style={styles.roleBadge}>
-                    <Text style={styles.roleText}>{t('ELITE RELAY NODE')}</Text>
+                    <Text style={styles.roleText}>{isSeller ? t('RELAY NODE PROVIDER') : t('BUYER ACCOUNT')}</Text>
                 </View>
 
-                {/* Verification Tags */}
+                {/* Verification Tags — driven by real server fields only */}
+                {(kycVerification ?? 0) > 0 && (
                 <View style={styles.tagRow}>
                     <View style={[styles.tag, { borderColor: Colors.success, backgroundColor: 'rgba(0, 255, 170, 0.05)' }]}>
                         <Text style={[styles.tagText, { color: Colors.success }]}>{t('✓ VERIFIED ID')}</Text>
                     </View>
-                    <View style={[styles.tag, { borderColor: Colors.primary, backgroundColor: 'rgba(0, 242, 255, 0.05)' }]}>
-                        <Text style={[styles.tagText, { color: Colors.primary }]}>{t('⚡ TOP RATED')}</Text>
-                    </View>
-                    <View style={[styles.tag, { borderColor: Colors.secondary, backgroundColor: 'rgba(112, 0, 255, 0.05)' }]}>
-                        <Text style={[styles.tagText, { color: Colors.secondary }]}>{t('💎 PREMIUM')}</Text>
-                    </View>
                 </View>
+                )}
             </View>
 
             {/* Stats Summary */}
@@ -253,9 +249,12 @@ export default function Profile() {
                             <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('Two-Factor Auth (2FA)')}</Text>
                             <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('Use Authenticator App')}</Text>
                         </View>
-                        <Switch 
-                            value={securityData.twoFactor} 
-                            onValueChange={(val) => setSecurityData({...securityData, twoFactor: val})} 
+<Switch
+                            value={securityData.twoFactor}
+                            onValueChange={(val) => {
+                              setSecurityData({ ...securityData, twoFactor: val });
+                              storage.setItem('dravio_pref_twofactor', val ? '1' : '0');
+                            }}
                             trackColor={{ false: colors.surfaceMid, true: colors.primary }}
                         />
                     </View>
@@ -263,16 +262,19 @@ export default function Profile() {
                     <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
                         <View>
                             <Text style={[styles.switchLabel, { color: colors.foreground }]}>{t('Biometric Login')}</Text>
-                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('FaceID / Fingerprint')}</Text>
+                            <Text style={[styles.switchSub, { color: colors.textMuted }]}>{t('FaceID / Fingerprint (saved on this device)')}</Text>
                         </View>
-                        <Switch 
-                            value={securityData.biometric} 
-                            onValueChange={(val) => setSecurityData({...securityData, biometric: val})} 
+                        <Switch
+                            value={securityData.biometric}
+                            onValueChange={(val) => {
+                              setSecurityData({ ...securityData, biometric: val });
+                              storage.setItem('dravio_pref_biometric', val ? '1' : '0');
+                            }}
                             trackColor={{ false: colors.surfaceMid, true: colors.primary }}
                         />
                     </View>
 
-                    <TouchableOpacity style={[styles.saveBtn, {backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.danger, marginTop: 32}]} onPress={() => Alert.alert('Keys Rotated', 'Your node encryption keys have been regenerated.')}>
+                    <TouchableOpacity style={[styles.saveBtn, {backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.danger, marginTop: 32}]} onPress={() => Alert.alert('No Relay Key Store', 'Encryption keys are rotated by your relay service provider. This build does not expose server-side key rotation.')}>
                         <Text style={[styles.saveBtnText, {color: Colors.danger}]}>{t('ROTATE ENCRYPTION KEYS')}</Text>
                     </TouchableOpacity>
                     
@@ -326,7 +328,11 @@ export default function Profile() {
                         />
                     </View>
 
-                    <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={() => setIsAlertsOpen(false)}>
+                    <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={() => {
+                      storage.setItem('dravio_pref_alerts', JSON.stringify(alertsData));
+                      setIsAlertsOpen(false);
+                      Alert.alert('Saved on Device', 'Alert preferences are stored locally only.');
+                    }}>
                         <Text style={styles.saveBtnText}>{t('DONE')}</Text>
                     </TouchableOpacity>
                 </View>
@@ -366,7 +372,11 @@ export default function Profile() {
                         />
                     </View>
 
-                    <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={() => {Alert.alert('Success', 'Traffic rules updated successfully'); setIsOptimizerOpen(false);}}>
+                    <TouchableOpacity style={[styles.saveBtn, {marginTop: 32}]} onPress={async () => {
+                      await storage.setItem('dravio_pref_optimizer', JSON.stringify(optimizerData));
+                      setIsOptimizerOpen(false);
+                      Alert.alert('Saved on Device', 'Optimizer settings are applied to this device only. They do not alter the relay or billing servers.');
+                    }}>
                         <Text style={styles.saveBtnText}>{t('SAVE OPTIMIZATION')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsOptimizerOpen(false)}>

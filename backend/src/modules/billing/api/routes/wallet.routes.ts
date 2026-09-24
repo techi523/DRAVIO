@@ -2,6 +2,9 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { walletRepository } from '../../repositories/wallet.repository.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import { pool } from '../../../../db/client.js';
+import { emitAudit } from '../../../audit/producer.js';
+
+const MAX_WITHDRAWAL_USD = 25_000;
 
 export async function walletRoutes(fastify: FastifyInstance) {
   fastify.get('/v1/billing/balance', {
@@ -20,18 +23,13 @@ export async function walletRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Wallet top-ups can ONLY originate from a verified payment (initiate a
+  // Stripe/M-Pesa payment first). This route no longer credits wallets from
+  // a client-supplied amount — that was an unvetted "money printer".
   fastify.post('/v1/billing/topup', {
     preHandler: [fastify.authenticate],
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { amount_usd } = request.body as any;
-    const userId = (request.user as any).sub;
-    try {
-      const new_balance = await walletRepository.topup(userId, Number(amount_usd));
-      return sendSuccess(reply, { success: true, new_balance_usd: new_balance, new_balance });
-    } catch (err: any) {
-      fastify.log.error(err);
-      return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);
-    }
+  }, async (_request: FastifyRequest, reply: FastifyReply) => {
+    return sendError(reply, 'WALLET_TOPUP_REQUIRES_PAYMENT', 409);
   });
 
   fastify.post('/v1/billing/withdraw', {
@@ -40,14 +38,26 @@ export async function walletRoutes(fastify: FastifyInstance) {
     const userId = (request.user as any).sub;
     const { amount_usd, method, phone_number } = request.body as any;
 
-    if (!amount_usd || typeof amount_usd !== 'number' || amount_usd <= 0) {
+    if (!amount_usd || typeof amount_usd !== 'number' || !Number.isFinite(amount_usd) || amount_usd <= 0) {
       return sendError(reply, 'INVALID_AMOUNT', 400);
+    }
+    if (amount_usd > MAX_WITHDRAWAL_USD) {
+      return sendError(reply, 'WITHDRAWAL_LIMIT_EXCEEDED', 400);
     }
     if (!method) {
       return sendError(reply, 'PAYMENT_METHOD_REQUIRED', 400);
     }
 
     try {
+      // Withdrawals are available to verified sellers only.
+      const sellerCheck = await pool.query(
+        'SELECT is_seller FROM users.profiles WHERE auth_user_id = $1',
+        [userId]
+      );
+      if (sellerCheck.rowCount === 0 || !sellerCheck.rows[0].is_seller) {
+        return sendError(reply, 'SELLER_ACCOUNT_REQUIRED', 403);
+      }
+
       const result = await pool.query(
         `WITH deducted AS (
            UPDATE billing.wallets
@@ -68,11 +78,20 @@ export async function walletRoutes(fastify: FastifyInstance) {
         return sendError(reply, 'INSUFFICIENT_BALANCE', 400);
       }
 
+      await emitAudit({
+        actor_id: userId,
+        action: 'payment.payout.request',
+        service: 'billing',
+        resource_type: 'payout',
+        resource_id: result.rows[0].id,
+        metadata: { amount_usd, method, status: 'PENDING', disbursement: 'UNAVAILABLE' },
+      });
+
       return sendSuccess(reply, {
         success: true,
         payout_id: result.rows[0].id,
         status: 'PENDING',
-        message: 'Withdrawal initiated. Funds arrive within 1-3 business days.',
+        message: 'Withdrawal requested. Payout processing is not yet available — no funds have been transferred. Your wallet balance already reflects the deduction.',
       });
     } catch (err: any) {
       fastify.log.error(err);

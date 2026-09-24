@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Settings, Power, PowerOff, ShieldCheck } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 
 export const RuleEngineUI = () => {
     const [rules, setRules] = useState<any[]>([]);
@@ -13,7 +14,7 @@ export const RuleEngineUI = () => {
 
     const fetchRules = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:3008/v1/admin/rules');
+            const res = await axios.get(`${API_BASE_URL}/v1/admin/rules`);
             setRules(res.data.data);
         } catch (err) {
             console.error('Failed to fetch rules', err);
@@ -22,7 +23,7 @@ export const RuleEngineUI = () => {
 
     const toggleRule = async (id: string) => {
         try {
-            await axios.post(`http://127.0.0.1:3008/v1/admin/rules/${id}/toggle`);
+            await axios.post(`${API_BASE_URL}/v1/admin/rules/${id}/toggle`);
             fetchRules();
         } catch (err) {
             console.error('Failed to toggle rule', err);

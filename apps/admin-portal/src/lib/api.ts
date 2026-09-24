@@ -2,7 +2,7 @@
  * DRAVIO Admin Portal — Production API Client
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || (process.env.NODE_ENV === 'production' ? 'https://api.dravio.com' : 'http://localhost:8080');
+export const API_BASE_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || (process.env.NODE_ENV === 'production' ? 'https://api.dravio.com' : 'http://localhost:8080');
 
 export class ApiError extends Error {
   constructor(

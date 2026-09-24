@@ -150,6 +150,17 @@ export default function RootLayout({
                 <NavBar />
                 <ConnectionStatus />
                 <main className="pt-24 min-h-screen">{children}</main>
+                <footer className="border-t border-white/10 px-8 py-8">
+                  <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
+                    <span>© {new Date().getFullYear()} DRAVIO Inc. All rights reserved.</span>
+                    <a
+                      href="/privacy"
+                      className="hover:text-primary transition-all"
+                    >
+                      Privacy Policy
+                    </a>
+                  </div>
+                </footer>
               </AuthProvider>
             </NeonAuthUIProvider>
           </ToastProvider>

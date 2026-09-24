@@ -35,70 +35,84 @@ export async function registerAdminRoutes(fastify: FastifyInstance, io: SocketIO
   const actionDispatcher = getActionDispatcher();
   ruleEngine.setDispatcher(actionDispatcher);
 
-  fastify.get('/admin/telemetry', {
-    preHandler: [requireRoles(['SUPER_ADMIN', 'SUPPORT_AGENT', 'SECURITY_ADMIN'])]
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const result = await pool.query(
-        `SELECT COUNT(*) as count FROM billing.sessions WHERE status = 'ACTIVE'`
-      );
-      const activeSessions = parseInt(result.rows[0]?.count || '0', 10);
+  // Core control-plane routes are registered under BOTH the legacy /admin/*
+  // prefix and /v1/admin/* so that the mobile app (base URL includes /v1) and
+  // the admin web portal (base URL without /v1, endpoints with /v1) resolve to
+  // the same handlers.
+  const corePrefixes = ['/v1/admin', '/admin'];
+  for (const prefix of corePrefixes) {
+    fastify.get(`${prefix}/telemetry`, {
+      preHandler: [requireRoles(['SUPER_ADMIN', 'SUPPORT_AGENT', 'SECURITY_ADMIN'])]
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const result = await pool.query(
+          `SELECT COUNT(*) AS active_sessions,
+                  COALESCE(SUM(bytes_used), 0)::numeric AS bytes_used
+             FROM billing.sessions
+            WHERE status = 'ACTIVE'`
+        );
+        const activeSessions = parseInt(result.rows[0]?.active_sessions || '0', 10);
+        const bytesUsed = Number(result.rows[0]?.bytes_used || 0);
+        const totalBandwidthGb = bytesUsed > 0
+          ? Math.round((bytesUsed / (1024 * 1024 * 1024)) * 100) / 100
+          : 0;
 
-      return reply.send({
-        active_nodes: activeSessions,
-        active_tunnels: activeSessions,
-        total_bandwidth_gb: activeSessions * 0.25,
-        lockdown_active: (global as any).__dravio_lockdown__ ?? false,
-      });
-    } catch (err: any) {
-      fastify.log.error({ err }, '[admin/telemetry]');
-      return reply.send({ active_nodes: 0, active_tunnels: 0, total_bandwidth_gb: 0, lockdown_active: false });
-    }
-  });
+        return reply.send({
+          active_nodes: activeSessions,
+          active_tunnels: activeSessions,
+          total_bandwidth_gb: totalBandwidthGb,
+          lockdown_active: (global as any).__dravio_lockdown__ ?? false,
+        });
+      } catch (err: any) {
+        fastify.log.error({ err }, '[admin/telemetry]');
+        return reply.send({ active_nodes: 0, active_tunnels: 0, total_bandwidth_gb: 0, lockdown_active: false });
+      }
+    });
 
-  fastify.get('/admin/incidents', {
-    preHandler: [requireRoles(['SUPER_ADMIN', 'SECURITY_ADMIN'])]
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const result = await pool.query(
-        `SELECT id, action AS description, actor_id, service, resource_type,
-                created_at, 'info' AS severity
-           FROM audit.audit_log
-          ORDER BY created_at DESC
-          LIMIT 50`
-      );
-      return reply.send(result.rows);
-    } catch (err: any) {
-      fastify.log.error({ err }, '[admin/incidents]');
-      return reply.send([]);
-    }
-  });
+    fastify.get(`${prefix}/incidents`, {
+      preHandler: [requireRoles(['SUPER_ADMIN', 'SECURITY_ADMIN'])]
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const result = await pool.query(
+          `SELECT id, action AS description, actor_id, service, resource_type,
+                  created_at, 'info' AS severity
+             FROM audit.audit_log
+            ORDER BY created_at DESC
+            LIMIT 50`
+        );
+        return reply.send(result.rows);
+      } catch (err: any) {
+        fastify.log.error({ err }, '[admin/incidents]');
+        return reply.send([]);
+      }
+    });
 
-  fastify.post('/admin/lockdown', {
-    preHandler: [requireRoles(['SUPER_ADMIN'])]
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
-    const { active } = req.body as any;
-    const adminId = (req as any).user?.sub || 'unknown';
+    fastify.post(`${prefix}/lockdown`, {
+      preHandler: [requireRoles(['SUPER_ADMIN'])]
+    }, async (req: FastifyRequest, reply: FastifyReply) => {
+      const { active } = req.body as any;
+      const adminId = (req as any).user?.sub || 'unknown';
 
-    (global as any).__dravio_lockdown__ = active;
+      (global as any).__dravio_lockdown__ = active;
 
-    try {
-      const producer = kafka.producer();
-      await producer.connect();
-      await producer.send({
-        topic: 'dm.admin.lockdown',
-        messages: [{
-          value: JSON.stringify({ active, adminId, timestamp: new Date().toISOString() })
-        }]
-      });
-      await producer.disconnect();
-    } catch (_e) {
-      fastify.log.warn('Could not propagate lockdown via Kafka');
-    }
+      try {
+        const producer = kafka.producer();
+        await producer.connect();
+        await producer.send({
+          topic: 'dm.admin.lockdown',
+          messages: [{
+            value: JSON.stringify({ active, adminId, timestamp: new Date().toISOString() })
+          }]
+        });
+        await producer.disconnect();
+      } catch (_e) {
+        fastify.log.warn('Could not propagate lockdown via Kafka');
+      }
 
-    fastify.log.warn(`[LOCKDOWN] ${active ? 'ENGAGED' : 'LIFTED'} by admin ${adminId}`);
-    return reply.send({ active, timestamp: new Date().toISOString() });
-  });
+      fastify.log.warn(`[LOCKDOWN] ${active ? 'ENGAGED' : 'LIFTED'} by admin ${adminId}`);
+      return reply.send({ active, timestamp: new Date().toISOString() });
+    });
+  }
 
   await fastify.register(userRoutes, { prefix: '/v1/admin/users', dispatcher: actionDispatcher });
   await fastify.register(billingRoutes, { prefix: '/v1/admin/billing', dispatcher: actionDispatcher });

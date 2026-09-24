@@ -4,6 +4,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator
 import { Colors } from '../theme/colors';
 import { api } from '../services/api';
 import { AuthContext } from '../services/AuthContext';
+import { getDeviceId } from '../services/device';
 import { vpnService, VpnStats } from '../services/VpnService';
 import { subscribeToPeerUpdates } from '../services/socket';
 
@@ -18,6 +19,7 @@ export default function Marketplace() {
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [session, setSession] = useState<VpnStats | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSeller, setActiveSeller] = useState<any | null>(null);
 
   useEffect(() => {
     fetchSellers();
@@ -64,8 +66,8 @@ export default function Marketplace() {
     setError('');
     try {
       const data = await api.get<any>('/marketplace/search?lat=0&lon=0');
-      const sorted = (data.results || []).sort((a: any, b: any) => 
-        (a.price_per_gb || 0.5) - (b.price_per_gb || 0.5) || (b.avg_speed || 0) - (a.avg_speed || 0)
+      const sorted = (data.results || []).sort((a: any, b: any) =>
+        (a.price_per_gb ?? Number.MAX_VALUE) - (b.price_per_gb ?? Number.MAX_VALUE) || ((b.avg_speed ?? 0) - (a.avg_speed ?? 0))
       );
       setSellers(sorted);
     } catch (err: any) {
@@ -82,28 +84,53 @@ export default function Marketplace() {
     }
 
     setConnectingId(seller.id);
+    setError('');
     try {
-      const res = await api.post<any>('/sessions', {
-        buyer_id: user.id,
-        seller_id: seller.id,
+      // Paid session start is server-authoritative: the backend resolves the
+      // seller price, checks the wallet, and refuses when the seller has no
+      // live relay. The returned session token is the billing session id.
+      const hardwareId = await getDeviceId();
+      const res = await api.post<any>('/billing/sessions/start', {
+        hardwareId,
+        sellerId: seller.id,
       });
 
-      const success = await vpnService.connect(res.id, res.vpn_config);
+      if (!res.sessionToken || !res.vpn_config) {
+        throw new Error('Server did not return a usable session.');
+      }
+
+      const success = await vpnService.connect(res.sessionToken, res.vpn_config);
       if (success) {
-        setActiveSessionId(res.id);
+        setActiveSessionId(res.sessionToken);
+        setActiveSeller(seller);
       }
     } catch (err: any) {
-      Alert.alert('Connection Failed', err.message || 'Could not establish encrypted VPN tunnel.');
+      const msg = err.message === 'SELLER_RELAY_NOT_REGISTERED'
+        ? 'This provider has not registered a live relay yet.'
+        : err.message === 'SELLER_PRICE_UNAVAILABLE'
+          ? 'This provider has no active pricing.'
+          : err.message || 'Could not establish encrypted VPN tunnel.';
+      Alert.alert('Connection Failed', msg);
     } finally {
       setConnectingId(null);
     }
   }, [user]);
 
   const handleDisconnect = React.useCallback(async () => {
+    const token = activeSessionId;
+    // Notify billing so the session is finalized and usage stops accruing.
+    if (token) {
+      try {
+        await api.post('/billing/sessions/end', { sessionToken: token });
+      } catch (_e) {
+        // Best-effort: local disconnect still proceeds.
+      }
+    }
     await vpnService.disconnect();
     setActiveSessionId(null);
-    Alert.alert('Disconnected', 'Your encrypted session has ended.');
-  }, []);
+    setActiveSeller(null);
+    Alert.alert('Disconnected', 'Your session has ended.');
+  }, [activeSessionId]);
 
   if (loading && sellers.length === 0) {
     return (
@@ -159,10 +186,10 @@ export default function Marketplace() {
               <View style={styles.cardHeader}>
                 <View style={[styles.relayIcon, { backgroundColor: idx % 2 === 0 ? colors.secondary : colors.accent }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.relayName}>{s.name || `Node ${s.id.slice(0,4)}`}</Text>
-                  <Text style={styles.relayMeta}>{s.avg_speed || 50} Mbps • {s.stability || 99}% Stability</Text>
+                  <Text style={styles.relayName}>{s.name || `Node ${String(s.id).slice(0,4)}`}</Text>
+                  <Text style={styles.relayMeta}>{s.avg_speed ? `${s.avg_speed} Mbps` : '—'} {'•'} {s.stability ? `${s.stability}% Stability` : 'Stability —'}</Text>
                 </View>
-                <Text style={styles.priceText}>${s.price_per_gb?.toFixed(2) || '0.50'}/GB</Text>
+                <Text style={styles.priceText}>{s.price_per_gb ? `$${s.price_per_gb.toFixed(2)}/GB` : '—'}</Text>
               </View>
               
               <TouchableOpacity 
@@ -197,7 +224,10 @@ export default function Marketplace() {
                     </View>
                     <View style={styles.bigStat}>
                         <Text style={styles.bigStatLabel}>SESSION COST</Text>
-                        <Text style={[styles.bigStatVal, { color: colors.warning }]}>${(((session?.bytesIn || 0) / (1024*1024*1024)) * 0.5).toFixed(4)}</Text>
+                        <Text style={[styles.bigStatVal, { color: colors.warning }]}>
+                          ${(((session?.bytesIn || 0) / (1024 * 1024 * 1024)) * (activeSeller?.price_per_gb ?? 0)).toFixed(4)}
+                          <Text style={{fontSize: 12}}> EST.</Text>
+                        </Text>
                     </View>
                 </View>
 

@@ -30,7 +30,7 @@ function DashboardView() {
       if (sellRes.status === "fulfilled") {
         // Show top 3 sellers sorted by speed
         const sorted = (sellRes.value.results || [])
-          .sort((a: Seller, b: Seller) => b.avg_speed - a.avg_speed)
+          .sort((a: Seller, b: Seller) => (b.avg_speed ?? -Infinity) - (a.avg_speed ?? -Infinity))
           .slice(0, 3);
         setTopSellers(sorted);
       }
@@ -175,7 +175,8 @@ function DashboardView() {
                       {s.name || `Node ${s.id.slice(0, 6)}`}
                     </p>
                     <p className="text-xs text-white/30">
-                      {s.avg_speed} Mbps • {s.stability}% stable •{" "}
+                      {s.avg_speed != null ? `${s.avg_speed} Mbps` : "—"} •{" "}
+                      {s.stability != null ? `${s.stability}% stable` : "Stability —"} •{" "}
                       {s.distance?.toFixed(1)} {s.unit}
                     </p>
                   </div>

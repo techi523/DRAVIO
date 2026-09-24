@@ -1,7 +1,5 @@
-import { AccountView } from "@neondatabase/auth/react";
-import { accountViewPaths } from "@neondatabase/auth/react/ui/server";
-
-export const dynamicParams = false;
+import { AccountView } from "@neondatabase/auth-ui";
+import { accountViewPaths } from "@neondatabase/auth-ui/server";
 
 export function generateStaticParams() {
   return Object.values(accountViewPaths).map((path) => ({ path }));

@@ -30,6 +30,14 @@ export interface ActiveSessionCache {
   hardwareId: string;
   pricePerMb: number;
   sellerId: string;
+  /** Bytes already billed for this session — usage reports bill only the delta. */
+  committedBytes: number;
+  /**
+   * Fractional-cent cost carried over (wallet stores cents only). Accumulated
+   * across reports and settled whenever it reaches a whole cent, so micro
+   * charges are never lost and never create rounding errors.
+   */
+  pendingCostUsd: number;
 }
 
 export class RedisCache {
@@ -74,6 +82,20 @@ export class RedisCache {
     } catch (err: any) {
       console.warn('[Redis Cache] Failed to remove session:', err.message);
     }
+  }
+
+  async updateCommittedBytes(sessionToken: string, bytes: number) {
+    const session = await this.getSession(sessionToken);
+    if (!session) return;
+    session.committedBytes = bytes;
+    await this.setSession(sessionToken, session);
+  }
+
+  async updatePendingCost(sessionToken: string, pendingCostUsd: number) {
+    const session = await this.getSession(sessionToken);
+    if (!session) return;
+    session.pendingCostUsd = pendingCostUsd;
+    await this.setSession(sessionToken, session);
   }
 }
 

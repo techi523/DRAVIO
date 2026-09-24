@@ -4,16 +4,46 @@ import { sessionRepository } from '../repositories/session.repository.js';
 import { walletRepository } from '../repositories/wallet.repository.js';
 import { sessionProducer } from '../events/producers/session.producer.js';
 import { createVpnSession } from '../../session/index.js';
+import { marketplaceRepository } from '../../marketplace/repositories/marketplace.repository.js';
+import { MIN_SESSION_BALANCE_USD, validateSessionStart } from './session-gate.js';
+
+export { MIN_SESSION_BALANCE_USD, validateSessionStart };
+export type { SessionStartGate, SessionStartCheck } from './session-gate.js';
 
 export class SessionManager {
-  async startSession(userId: string, hardwareId: string, pricePerMb: number, sellerId: string): Promise<{sessionToken: string; vpnConfig: string}> {
-    const liveBalance = await walletRepository.getBalance(userId);
-    
-    if (liveBalance.balance_usd <= 0) {
-      throw new Error('INSUFFICIENT_FUNDS');
+  /**
+   * Starts a paid data session.
+   * pricePerMb is NEVER taken from the client — it is resolved server-side
+   * from the seller's marketplace listing (Redis heartbeat) so that a buyer
+   * cannot set their own rate or direct earnings to an arbitrary seller.
+   */
+  async startSession(userId: string, hardwareId: string, _clientPricePerMb: number | undefined, sellerId: string): Promise<{sessionToken: string; vpnConfig: string}> {
+    if (!sellerId) {
+      throw new Error('SELLER_REQUIRED');
+    }
+    if (!hardwareId || typeof hardwareId !== 'string' || !hardwareId.trim()) {
+      throw new Error('HARDWARE_REQUIRED');
     }
 
-    const result = await createVpnSession(userId, sellerId || hardwareId, 'auto');
+    // Server-authoritative price from the seller listing.
+    const trusted = await marketplaceRepository.getTrustedPricePerMb(sellerId);
+    if (!trusted || trusted.pricePerMb <= 0) {
+      throw new Error('SELLER_PRICE_UNAVAILABLE');
+    }
+    const pricePerMb = trusted.pricePerMb;
+
+    const liveBalance = await walletRepository.getBalance(userId);
+    const gate = validateSessionStart({
+      sellerId,
+      hardwareId,
+      pricePerMb,
+      balanceUsd: liveBalance.balance_usd,
+    });
+    if (gate !== 'OK') {
+      throw new Error(gate);
+    }
+
+    const result = await createVpnSession(userId, sellerId, 'auto');
     const sessionToken = result.session_id;
     const vpnConfig = result.vpn_config;
 
@@ -23,10 +53,12 @@ export class SessionManager {
       userId,
       hardwareId,
       pricePerMb,
-      sellerId
+      sellerId,
+      committedBytes: 0,
+      pendingCostUsd: 0,
     });
 
-    console.log(`[SessionManager] Session ${sessionToken} authorized for hardware ${hardwareId} with seller ${sellerId}`);
+    console.log(`[SessionManager] Session ${sessionToken} authorized for hardware ${hardwareId} with seller ${sellerId} @ ${pricePerMb}/MB`);
     return { sessionToken, vpnConfig };
   }
 
@@ -49,5 +81,7 @@ export class SessionManager {
     }
   }
 }
+
+
 
 export const sessionManager = new SessionManager();

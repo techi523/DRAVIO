@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/Toast";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { subscribeToPeerUpdates } from "@/lib/socket";
+import { getBrowserDeviceId } from "@/lib/device";
 
 export default function MarketplacePage() {
   const t = (str: string) => str;
@@ -117,13 +118,13 @@ export default function MarketplacePage() {
     // Sort
     switch (sortBy) {
       case "price":
-        results.sort((a, b) => a.price_per_gb - b.price_per_gb);
+        results.sort((a, b) => (a.price_per_gb ?? Infinity) - (b.price_per_gb ?? Infinity));
         break;
       case "speed":
-        results.sort((a, b) => b.avg_speed - a.avg_speed);
+        results.sort((a, b) => (b.avg_speed ?? -Infinity) - (a.avg_speed ?? -Infinity));
         break;
       case "stability":
-        results.sort((a, b) => b.stability - a.stability);
+        results.sort((a, b) => (b.stability ?? -Infinity) - (a.stability ?? -Infinity));
         break;
     }
 
@@ -153,10 +154,11 @@ export default function MarketplacePage() {
 
     setPurchasing(true);
     try {
-      const pricePerMb = selectedSeller.price_per_gb / 1024;
+      // The client price hint is ignored by the backend; a real per-browser
+      // hardware id is bound to the billing session.
       const result = await api.sessions.start(
-        selectedSeller.id,
-        pricePerMb,
+        getBrowserDeviceId(),
+        selectedSeller.price_per_gb / 1024,
         selectedSeller.id
       );
 
@@ -332,18 +334,20 @@ export default function MarketplacePage() {
                   {s.name || `Node ${s.id.slice(0, 6)}`}
                 </h4>
                 <div className="flex gap-4 text-sm text-white/40 flex-wrap">
-                  <span>{s.avg_speed} Mbps</span>
+                  <span>{s.avg_speed != null ? `${s.avg_speed} Mbps` : "—"}</span>
                   <span>•</span>
                   <span
                     className={
-                      s.stability >= 95
-                        ? "text-green-400"
-                        : s.stability >= 80
-                          ? "text-yellow-400"
-                          : "text-red-400"
+                      s.stability == null
+                        ? ""
+                        : s.stability >= 95
+                          ? "text-green-400"
+                          : s.stability >= 80
+                            ? "text-yellow-400"
+                            : "text-red-400"
                     }
                   >
-                    {s.stability}% Stable
+                    {s.stability != null ? `${s.stability}% Stable` : "Stability —"}
                   </span>
                   <span>•</span>
                   <span>
@@ -408,13 +412,13 @@ export default function MarketplacePage() {
               <div className="bg-white/5 p-3 rounded-xl">
                 <p className="text-xs text-white/30 uppercase mb-1">{t("Speed")}</p>
                 <p className="text-xl font-black">
-                  {selectedSeller.avg_speed} Mbps
+                  {selectedSeller.avg_speed != null ? `${selectedSeller.avg_speed} Mbps` : "—"}
                 </p>
               </div>
               <div className="bg-white/5 p-3 rounded-xl">
                 <p className="text-xs text-white/30 uppercase mb-1">{t("Stability")}</p>
                 <p className="text-xl font-black">
-                  {selectedSeller.stability}%
+                  {selectedSeller.stability != null ? `${selectedSeller.stability}%` : "—"}
                 </p>
               </div>
               <div className="bg-white/5 p-3 rounded-xl">

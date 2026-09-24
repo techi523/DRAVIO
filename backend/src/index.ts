@@ -7,6 +7,9 @@ import compress from '@fastify/compress';
 import { Server as SocketIOServer } from 'socket.io';
 import fp from 'fastify-plugin';
 
+// Fail-fast environment validation (JWT_SECRET min length, fee bounds, etc.)
+import './config/env.js';
+
 // shared auth middleware
 import { authMiddlewarePlugin } from './modules/auth/middleware.js';
 // Module route registrations
@@ -19,6 +22,9 @@ import { registerBillingRoutes } from './modules/billing/index.js';
 import { registerISPRoutes } from './modules/isp/index.js';
 import { registerAdminRoutes } from './modules/admin/index.js';
 import { registerFraudRoutes } from './modules/fraud/index.js';
+import { registerComplianceRoutes } from './modules/compliance/index.js';
+import { registerPrivacyRoutes } from './modules/privacy/index.js';
+import { registerProviderRoutes } from './modules/provider/index.js';
 // Background services
 import { startAnalyticsAggregator } from './modules/analytics/index.js';
 import { startMeteringProcessor } from './modules/metering/index.js';
@@ -120,6 +126,9 @@ async function build() {
   await registerBillingRoutes(fastify);
   registerISPRoutes(fastify);
   registerFraudRoutes(fastify);
+  await registerComplianceRoutes(fastify);
+  await registerPrivacyRoutes(fastify);
+  await registerProviderRoutes(fastify);
   // Admin routes need Socket.IO - passed later after we create io
 }
 

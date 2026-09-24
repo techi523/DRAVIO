@@ -1,0 +1,138 @@
+﻿{
+    "timestamp":  "20260922-045732",
+    "device":  "emulator-5554",
+    "sdk":  "36",
+    "package":  "com.dravio.app",
+    "steps":  [
+                  {
+                      "Step":  "Tooling: adb",
+                      "Status":  "PASS",
+                      "Detail":  "C:\\Users\\Admin\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe"
+                  },
+                  {
+                      "Step":  "Tooling: emulator",
+                      "Status":  "PASS",
+                      "Detail":  "C:\\Users\\Admin\\AppData\\Local\\Android\\Sdk\\emulator\\emulator.exe"
+                  },
+                  {
+                      "Step":  "ANDROID_HOME",
+                      "Status":  "WARN",
+                      "Detail":  "C:\\Users\\Admin\\AppData\\Local\\Android\\Sdk"
+                  },
+                  {
+                      "Step":  "JAVA_HOME",
+                      "Status":  "WARN",
+                      "Detail":  ""
+                  },
+                  {
+                      "Step":  "JDK resolved",
+                      "Status":  "PASS",
+                      "Detail":  "C:/Users/Admin/AppData/Local/Programs/jdk-17.0.20.1+1"
+                  },
+                  {
+                      "Step":  "Mobile app dir",
+                      "Status":  "PASS",
+                      "Detail":  "C:\\Users\\Admin\\Desktop\\DRAVIO\\apps\\mobile-app"
+                  },
+                  {
+                      "Step":  "node_modules",
+                      "Status":  "PASS",
+                      "Detail":  "npm install required"
+                  },
+                  {
+                      "Step":  "API: Local backend 127.0.0.1:8080",
+                      "Status":  "DOWN",
+                      "Detail":  "unreachable: Unable to connect to the remote server"
+                  },
+                  {
+                      "Step":  "API: Prod API",
+                      "Status":  "DOWN",
+                      "Detail":  "unreachable: Unable to connect to the remote server"
+                  },
+                  {
+                      "Step":  "Metro :8081",
+                      "Status":  "PASS",
+                      "Detail":  "listener on :8081 (node)"
+                  },
+                  {
+                      "Step":  "Emulator boot",
+                      "Status":  "PASS",
+                      "Detail":  "device=emulator-5554"
+                  },
+                  {
+                      "Step":  "Device online",
+                      "Status":  "PASS",
+                      "Detail":  "emulator-5554 SDK=36 model=sdk_gphone64_x86_64 abi=x86_64"
+                  },
+                  {
+                      "Step":  "Emulator: gateway 10.0.2.2",
+                      "Status":  "PASS",
+                      "Detail":  "PING 10.0.2.2 (10.0.2.2) 56(84) bytes of data. 64 bytes from 10.0.2.2: icmp_seq=1 ttl=255 time=10.4 ms  --- 10.0.2.2 ping statistics --- 1 packets transmitted, 1 received, 0% packet loss, time 0ms rtt min/avg/max/mdev = 10.447/10.447/10.447/0.000 ms"
+                  },
+                  {
+                      "Step":  "Emulator: API 10.0.2.2:8080",
+                      "Status":  "NOT VERIFIED",
+                      "Detail":  "curl unavailable in guest (/system/bin/sh: curl: inaccessible or not found)"
+                  },
+                  {
+                      "Step":  "App pre-installed (skip build)",
+                      "Status":  "PASS",
+                      "Detail":  "package com.dravio.app"
+                  },
+                  {
+                      "Step":  "App launched",
+                      "Status":  "PASS",
+                      "Detail":  "  ResumedActivity: ActivityRecord{13361653 u0 com.dravio.app/.MainActivity t34}"
+                  },
+                  {
+                      "Step":  "Initial screen render",
+                      "Status":  "PASS",
+                      "Detail":  "text: DRAVIO | DECENTRALIZED INTERNET MARKETPLACE | G Google | ï£¿ Apple | GH GitHub | M Microsoft | \u0026#128241; Continue with Phone | or continue with email | EMAIL | you@example.com | PASSWORD | Your password | \u0026#128584; | LOG"
+                  },
+                  {
+                      "Step":  "Initial screen error-state check",
+                      "Status":  "INFO",
+                      "Detail":  "error signals: "
+                  },
+                  {
+                      "Step":  "Tab 1 render",
+                      "Status":  "PASS",
+                      "Detail":  "text: Tue, Sep 22 | Gmail | Photos | YouTube | Phone | Messages | Chrome"
+                  },
+                  {
+                      "Step":  "Tab 2 render",
+                      "Status":  "PASS",
+                      "Detail":  "text: Tue, Sep 22 | Gmail | Photos | YouTube | Phone | Messages | Chrome"
+                  },
+                  {
+                      "Step":  "Tab 3 render",
+                      "Status":  "PASS",
+                      "Detail":  "text: Tue, Sep 22 | Gmail | Photos | YouTube | Phone | Messages | Chrome"
+                  },
+                  {
+                      "Step":  "Tab 4 render",
+                      "Status":  "PASS",
+                      "Detail":  "text: Tue, Sep 22 | Gmail | Photos | YouTube | Phone | Messages | Chrome"
+                  },
+                  {
+                      "Step":  "Tab 5 render",
+                      "Status":  "PASS",
+                      "Detail":  "text: Tue, Sep 22 | Gmail | Photos | YouTube | Phone | Messages | Chrome"
+                  },
+                  {
+                      "Step":  "logcat crash scan",
+                      "Status":  "PASS",
+                      "Detail":  "signals: ; see logcat-full.log"
+                  },
+                  {
+                      "Step":  "meminfo",
+                      "Status":  "INFO",
+                      "Detail":  ""
+                  },
+                  {
+                      "Step":  "Screenshots captured",
+                      "Status":  "INFO",
+                      "Detail":  "6 PNGs in C:\\Users\\Admin\\Desktop\\DRAVIO\\docs\\testing\\emulator-evidence-20260922-045732"
+                  }
+              ]
+}

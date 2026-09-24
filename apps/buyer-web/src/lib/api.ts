@@ -15,10 +15,12 @@ export interface Seller {
   unit: string;
   pricing_model: string;
   price_per_gb: number;
-  avg_speed: number;
-  stability: number;
+  avg_speed: number | null;
+  stability: number | null;
   status: string;
   last_seen: number;
+  relay_endpoint: string | null;
+  relay_public_key: string | null;
 }
 
 export interface WalletBalance {

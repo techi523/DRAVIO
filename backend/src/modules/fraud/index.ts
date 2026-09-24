@@ -63,20 +63,28 @@ async function startFraudConsumer() {
 }
 
 export function registerFraudRoutes(fastify: FastifyInstance) {
-  fastify.post('/v1/internal/analyze/payment', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Internal endpoints are exposed only to authenticated admins, never to the public.
+  fastify.post('/v1/internal/analyze/payment', { preHandler: [(req, reply) => fastify.authorize(['ADMIN', 'SUPER_ADMIN'])(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { user_id, failed_count } = request.body as any;
-    const event = engine.evaluatePaymentRisk(user_id, failed_count);
+    if (!user_id || typeof user_id !== 'string') {
+      return reply.status(400).send({ error: 'USER_ID_REQUIRED' });
+    }
+    const failed = Number.isFinite(failed_count) ? Number(failed_count) : 0;
+    const event = engine.evaluatePaymentRisk(user_id, failed);
     if (event) return { action: 'BLOCK', event };
     return { action: 'ALLOW' };
   });
 
-  fastify.post('/v1/internal/analyze/travel', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/v1/internal/analyze/travel', { preHandler: [(req, reply) => fastify.authorize(['ADMIN', 'SUPER_ADMIN'])(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const payload = request.body as any;
+    if (!payload || typeof payload !== 'object') {
+      return reply.status(400).send({ error: 'INVALID_PAYLOAD' });
+    }
     const event = engine.evaluateTravelRisk(
-      payload.user_id,
-      payload.last_country,
-      payload.current_country,
-      payload.time_diff_minutes
+      String(payload.user_id || ''),
+      String(payload.last_country || ''),
+      String(payload.current_country || ''),
+      Number.isFinite(payload.time_diff_minutes) ? Number(payload.time_diff_minutes) : 0
     );
     if (event) return { action: 'FLAG', event };
     return { action: 'ALLOW' };

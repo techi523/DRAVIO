@@ -1,4 +1,4 @@
-export const generateDeviceFingerprint = (headers: any) => {
+export const generateDeviceFingerprint = (headers: any = {}) => {
   const userAgent = headers['user-agent'] || 'unknown';
   const acceptLang = headers['accept-language'] || 'unknown';
   return Buffer.from(`${userAgent}-${acceptLang}`).toString('base64');

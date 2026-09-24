@@ -9,6 +9,10 @@ export class MarketplaceService {
   async findNearbySellers(input: SearchInput) {
     return await marketplaceRepository.searchSellers(input);
   }
+
+  async findById(sellerId: string) {
+    return await marketplaceRepository.findById(sellerId);
+  }
 }
 
 export const marketplaceService = new MarketplaceService();

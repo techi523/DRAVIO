@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldAlert, Fingerprint, Eye, Lock } from 'lucide-react';
 import { io } from 'socket.io-client';
+import { API_BASE_URL } from '@/lib/api';
 
 export const SOCPanel = () => {
   const [alerts, setAlerts] = useState<any[]>([
@@ -12,7 +13,7 @@ export const SOCPanel = () => {
   ]);
 
   useEffect(() => {
-    const socket = io('http://127.0.0.1:3008');
+    const socket = io(API_BASE_URL);
     
     socket.on('security_alert', (newAlert) => {
         setAlerts(prev => [

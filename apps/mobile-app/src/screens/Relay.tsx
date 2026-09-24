@@ -7,6 +7,7 @@ import { onEvent } from '../services/socket';
 import VpnDisclosure, { VPN_CONSENT_KEY } from './VpnDisclosure';
 import { storage } from '../services/storage';
 import { AuthContext } from '../services/AuthContext';
+import Input from '../components/Input';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +29,10 @@ export default function Relay() {
     rate: 0.50, // USD
     maxUsers: 5,
   });
+
+  // Real relay credentials the provider must register before buyers can
+  // actually connect a WireGuard tunnel to this node.
+  const [relay, setRelay] = useState({ endpoint: '', publicKey: '' });
 
   // Network stats
   const [network, setNetwork] = useState({
@@ -113,12 +118,12 @@ export default function Relay() {
   const detectNetwork = async () => {
     setLoading(true);
     try {
-      // Ping gateway health to guarantee network link is online and active
+      // Ping gateway health to guarantee network link is online and active.
       await api.get('/marketplace/sellers');
       setNetwork({
-        type: 'Fiber Broadband',
-        speed: 94.2,
-        hotspot: 'Active & Compliant',
+        type: 'Online',
+        speed: 0,
+        hotspot: 'Gateway verified',
       });
       setStep('config');
     } catch (err: any) {
@@ -131,6 +136,8 @@ export default function Relay() {
   const startSharingNode = async () => {
     setLoading(true);
     try {
+      // Only measured values are broadcast. A stability of 99 is never
+      // asserted — the seller screen no longer fabricates network metrics.
       await api.post('/marketplace/heartbeat', {
         lat: 0.0,
         lon: 0.0,
@@ -139,10 +146,12 @@ export default function Relay() {
           rate: config.rate,
         },
         metrics: {
-          avgSpeed: network.speed,
-          stability: 99,
+          avgSpeed: network.speed > 0 ? network.speed : undefined,
           maxUsers: config.maxUsers,
         },
+        relay: (relay.endpoint && relay.publicKey)
+          ? { endpoint: relay.endpoint.trim(), publicKey: relay.publicKey.trim() }
+          : undefined,
         status: 'active',
       });
 
@@ -154,7 +163,11 @@ export default function Relay() {
         dataShared: 0,
         uptime: '0h 0m',
       });
-      Alert.alert('Operator Node Live!', 'Your network interface is now hosting active WireGuard tunnels on the marketplace.');
+      if (relay.endpoint && relay.publicKey) {
+        Alert.alert('Node Listed', 'Your node is registered on the marketplace. Buyers can now connect to your relay.');
+      } else {
+        Alert.alert('Node Listed', 'Pricing registered. Add your relay endpoint and public key to let buyers connect tunnels.');
+      }
     } catch (err: any) {
       Alert.alert('Activation Failed', err.message || 'Could not register node in the routing registry.');
     } finally {
@@ -182,15 +195,17 @@ export default function Relay() {
                    rate: config.rate,
                  },
                  metrics: {
-                   avgSpeed: network.speed,
-                   stability: 99,
+                   avgSpeed: network.speed > 0 ? network.speed : undefined,
                    maxUsers: config.maxUsers,
                  },
+                 relay: (relay.endpoint && relay.publicKey)
+                   ? { endpoint: relay.endpoint.trim(), publicKey: relay.publicKey.trim() }
+                   : undefined,
                  status: 'offline',
                });
               setIsSharing(false);
               setStep('init');
-              Alert.alert('Node Terminated', 'All Buyers disconnected. Hotspot routing stopped.');
+              Alert.alert('Node Offline', 'Your node is no longer listed on the marketplace.');
             } catch (err: any) {
               Alert.alert('Action Failed', err.message || 'Error disconnecting active VPN processes.');
             } finally {
@@ -322,6 +337,36 @@ export default function Relay() {
               </View>
             </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{t('ADVERTISED UPLINK SPEED (MBPS, OPTIONAL)')}</Text>
+              <Input
+                value={network.speed ? String(network.speed) : ''}
+                onChangeText={(v) => setNetwork({ ...network, speed: parseFloat(v) || 0 })}
+                keyboardType="numeric"
+                placeholder="e.g. 80"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{t('RELAY ENDPOINT (HOST:PORT, OPTIONAL)')}</Text>
+              <Input
+                value={relay.endpoint}
+                onChangeText={(v) => setRelay({ ...relay, endpoint: v })}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="209.126.8.20:51820"
+              />
+              <Text style={styles.label}>{t('RELAY PUBLIC KEY (OPTIONAL)')}</Text>
+              <Input
+                value={relay.publicKey}
+                onChangeText={(v) => setRelay({ ...relay, publicKey: v })}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="WireGuard public key of your relay"
+              />
+              <Text style={styles.hint}>{t('Buyers can only connect once a real relay endpoint and public key are registered.')}</Text>
+            </View>
+
             <TouchableOpacity style={styles.primaryBtn} onPress={startSharingNode}>
               <Text style={styles.primaryBtnText}>{t('START BROADCASTING')}</Text>
             </TouchableOpacity>
@@ -408,7 +453,8 @@ const styles = StyleSheet.create({
   scanCard: { backgroundColor: Colors.glass, padding: 40, borderRadius: 24, alignItems: 'center', marginVertical: 40, borderWidth: 1, borderColor: Colors.border },
   scanText: { marginTop: 16, color: Colors.textMuted, fontSize: 12 },
   inputGroup: { marginBottom: 32 },
-  label: { fontSize: 10, fontWeight: '900', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 16, textTransform: 'uppercase' },
+  label: { fontSize: 10, fontWeight: '900', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 8, marginTop: 8, textTransform: 'uppercase' },
+  hint: { fontSize: 12, color: Colors.textMuted, marginTop: 4, lineHeight: 18 },
   configRow: { flexDirection: 'row', justifyContent: 'space-between' },
   chip: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, backgroundColor: Colors.surfaceMid, borderWidth: 1, borderColor: Colors.border },
   chipActive: { borderColor: Colors.success, backgroundColor: 'rgba(0, 255, 170, 0.08)' },

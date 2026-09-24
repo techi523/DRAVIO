@@ -1,6 +1,4 @@
-import { AuthView } from "@neondatabase/auth/react";
-
-export const dynamicParams = false;
+import { AuthView } from "@neondatabase/auth-ui";
 
 export default async function AuthPage({
   params,

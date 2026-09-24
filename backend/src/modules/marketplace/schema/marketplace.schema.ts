@@ -12,6 +12,12 @@ export const HeartbeatSchema = z.object({
     stability: z.number().min(0).max(100).optional(),
     maxUsers: z.number().int().positive().optional(),
   }),
+  // Real relay credentials a provider must register before buyers can obtain
+  // a working WireGuard config. Sessions fail closed when these are absent.
+  relay: z.object({
+    endpoint: z.string().min(1).max(255),
+    publicKey: z.string().min(32).max(128),
+  }).optional(),
   status: z.enum(['active', 'idle', 'offline']).default('active'),
 });
 

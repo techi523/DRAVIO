@@ -1,4 +1,5 @@
 import { pool } from '../db/client.js';
+import { createHash } from 'crypto';
 
 export interface AuthUser {
   id: string;
@@ -14,6 +15,14 @@ export interface AuthProvider {
   provider_name: string;
   provider_id: string;
   provider_email: string | null;
+}
+
+export interface RefreshTokenRecord {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: Date;
+  revoked: boolean;
 }
 
 export class AuthRepository {
@@ -62,6 +71,47 @@ export class AuthRepository {
        VALUES ($1, $2, $3, $4) 
        ON CONFLICT (provider_name, provider_id) DO NOTHING`,
       [userId, providerName, providerId, providerEmail || null]
+    );
+  }
+
+  // ── Refresh tokens ────────────────────────────────────────────────
+  static hashToken(rawToken: string): string {
+    return createHash('sha256').update(rawToken).digest('hex');
+  }
+
+  async createRefreshToken(userId: string, rawToken: string, ttlMs: number): Promise<void> {
+    await pool.query(
+      `INSERT INTO auth.refresh_tokens (user_id, token_hash, expires_at)
+       VALUES ($1, $2, CURRENT_TIMESTAMP + ($3 || ' milliseconds')::interval)`,
+      [userId, AuthRepository.hashToken(rawToken), ttlMs]
+    );
+  }
+
+  async findRefreshToken(rawToken: string): Promise<(RefreshTokenRecord & { email: string; roles: string[] }) | null> {
+    const result = await pool.query(
+      `SELECT rt.id, rt.user_id, rt.token_hash, rt.expires_at, rt.revoked,
+              u.email, u.roles
+         FROM auth.refresh_tokens rt
+         JOIN auth.users u ON u.id = rt.user_id
+        WHERE rt.token_hash = $1`,
+      [AuthRepository.hashToken(rawToken)]
+    );
+    return result.rows[0] || null;
+  }
+
+  async revokeRefreshToken(rawToken: string): Promise<void> {
+    await pool.query(
+      `UPDATE auth.refresh_tokens SET revoked = TRUE
+        WHERE token_hash = $1 AND revoked = FALSE`,
+      [AuthRepository.hashToken(rawToken)]
+    );
+  }
+
+  async revokeAllUserTokens(userId: string): Promise<void> {
+    await pool.query(
+      `UPDATE auth.refresh_tokens SET revoked = TRUE
+        WHERE user_id = $1 AND revoked = FALSE`,
+      [userId]
     );
   }
 }

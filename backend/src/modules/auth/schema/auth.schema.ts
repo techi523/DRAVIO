@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
+// Public registration must NEVER grant admin privileges.
+// Admin roles are provisioned exclusively by the backend (seed/CLI), never from the client.
 export const RegisterSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   full_name: z.string().min(2),
   country_code: z.string().length(2).optional().default('US'),
-  role: z.enum(['BUYER', 'SELLER', 'ADMIN']).default('BUYER'),
+  role: z.enum(['BUYER', 'SELLER']).default('BUYER'),
 });
 
 export const LoginSchema = z.object({
@@ -21,11 +23,11 @@ export const OAuthLoginSchema = z.object({
 });
 
 export const OtpSendSchema = z.object({
-  phone_number: z.string(),
+  phone_number: z.string().regex(/^\+[1-9]\d{1,14}$/, 'phone_number must be in E.164 format'),
 });
 
 export const OtpVerifySchema = z.object({
-  phone_number: z.string(),
+  phone_number: z.string().regex(/^\+[1-9]\d{1,14}$/, 'phone_number must be in E.164 format'),
   code: z.string().length(6),
   role_preference: z.enum(['BUYER', 'SELLER']).default('BUYER'),
 });

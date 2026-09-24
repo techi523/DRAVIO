@@ -35,7 +35,7 @@ export class UserRepository {
     }
 
     const result = await pool.query(
-      'SELECT id, auth_user_id, full_name, country_code, created_at FROM users.profiles WHERE auth_user_id = $1',
+      'SELECT id, auth_user_id, email, full_name, country_code, phone_number, is_seller, kyc_level, created_at FROM users.profiles WHERE auth_user_id = $1',
       [authUserId]
     );
     const profile = result.rows[0] || null;
@@ -55,17 +55,26 @@ export class UserRepository {
     return result.rows[0].id;
   }
 
+  // Whitelist of profile columns a user may update directly.
+  // All other columns (auth_user_id, id, is_seller, kyc_level, email, phone_number, ...)
+  // are protected: they can only change through dedicated server-side flows.
+  private static readonly UPDATABLE_FIELDS = new Map<string, string>([
+    ['full_name', 'full_name'],
+    ['country_code', 'country_code'],
+  ]);
+
   async update(id: string, updates: Partial<{ full_name: string; country_code: string }>): Promise<UserProfile> {
-    const fields = Object.keys(updates);
-    const values = Object.values(updates);
-    
-    if (fields.length === 0) {
+    const entries = Object.entries(updates).filter(([key]) => UserRepository.UPDATABLE_FIELDS.has(key));
+
+    if (entries.length === 0) {
       throw new Error('NO_FIELDS_TO_UPDATE');
     }
 
-    const setClause = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
+    const setClause = entries.map(([key], i) => `${UserRepository.UPDATABLE_FIELDS.get(key)} = $${i + 2}`).join(', ');
+    const values = entries.map(([, value]) => value);
+
     const result = await pool.query(
-      `UPDATE users.profiles SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING id, auth_user_id, full_name, country_code, created_at`,
+      `UPDATE users.profiles SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING id, auth_user_id, email, full_name, country_code, phone_number, is_seller, kyc_level, created_at`,
       [id, ...values]
     );
 

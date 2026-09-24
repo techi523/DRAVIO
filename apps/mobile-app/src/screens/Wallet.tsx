@@ -36,6 +36,7 @@ export default function Wallet() {
   // Seller Payout Modal State
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('10'); // USD
+  const [withdrawPhone, setWithdrawPhone] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   const isSeller = user?.role === 'seller';
@@ -63,10 +64,10 @@ export default function Wallet() {
     setLoading(true);
     setError('');
     try {
-      const balRes = await api.get<any>('/wallet/balance');
+      const balRes = await api.get<any>('/billing/balance');
       setBalance(balRes.balance ?? 0);
 
-      const txRes = await api.get<any[]>('/wallet/transactions');
+      const txRes = await api.get<any[]>('/billing/transactions');
       setTransactions(
         txRes.map((tx: any) => ({
           id: tx.id,
@@ -140,18 +141,28 @@ export default function Wallet() {
       return;
     }
 
+    const phone = withdrawPhone.trim();
+    if (!phone.startsWith('+')) {
+      Alert.alert('Phone Required', 'Enter your M-Pesa phone number in international format, e.g. +2547XXXXXXX.');
+      return;
+    }
+
     setWithdrawLoading(true);
     try {
-      await api.post('/wallet/withdraw', { amount: amt });
+      const res = await api.post<any>('/billing/withdraw', {
+        amount_usd: amt,
+        method: 'MPESA',
+        phone_number: phone,
+      });
       setShowWithdraw(false);
-      Alert.alert('Withdrawal Processing', 'Your funds are being transferred to your linked bank account.');
+      Alert.alert('Withdrawal Requested', res.message || 'Your payout request has been accepted and is processing.');
       fetchWalletData();
     } catch (err: any) {
       Alert.alert('Withdrawal Failed', err.message || 'Could not process payout.');
     } finally {
       setWithdrawLoading(false);
     }
-  }, [withdrawAmount, balance, fetchWalletData]);
+  }, [withdrawAmount, withdrawPhone, balance, fetchWalletData]);
 
   if (loading) {
     return (
@@ -278,6 +289,15 @@ export default function Wallet() {
               autoFocus
               leftElement={<Text style={[styles.currency, { color: colors.foreground }]}>{t("USD")}</Text>}
               style={{ fontSize: 24, fontWeight: '900' }}
+            />
+
+            <Input
+              value={withdrawPhone}
+              onChangeText={setWithdrawPhone}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              placeholder="+2547XXXXXXX"
+              label={t("M-PESA PHONE NUMBER")}
             />
 
             <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: themeAccent }]} onPress={handleWithdraw} disabled={withdrawLoading}>

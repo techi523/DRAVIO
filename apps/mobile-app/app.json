@@ -9,6 +9,15 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050614",
     "primaryColor": "#00F2FF",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/dravio-mobile-app",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -69,16 +78,17 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 35,
+            "compileSdkVersion": 36,
             "targetSdkVersion": 35,
             "minSdkVersion": 26,
-            "buildToolsVersion": "35.0.0",
-            "usesCleartextTraffic": true
+            "buildToolsVersion": "36.0.0",
+            "usesCleartextTraffic": false
           }
         }
       ],
       "@react-native-google-signin/google-signin",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-updates"
     ],
     "extra": {
       "eas": {

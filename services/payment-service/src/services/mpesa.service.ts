@@ -9,11 +9,15 @@ export class MpesaService {
   private callbackUrl: string;
 
   constructor() {
-    this.consumerKey = process.env.MPESA_CONSUMER_KEY || 'dummy_key';
-    this.consumerSecret = process.env.MPESA_CONSUMER_SECRET || 'dummy_secret';
-    this.shortCode = process.env.MPESA_SHORTCODE || '174379';
-    this.passkey = process.env.MPESA_PASSKEY || 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919';
-    this.callbackUrl = process.env.MPESA_CALLBACK_URL || 'https://api.dravio.com/payments/mpesa/callback';
+    this.consumerKey = process.env.MPESA_CONSUMER_KEY || '';
+    this.consumerSecret = process.env.MPESA_CONSUMER_SECRET || '';
+    this.shortCode = process.env.MPESA_SHORTCODE || '';
+    this.passkey = process.env.MPESA_PASSKEY || '';
+    this.callbackUrl = process.env.MPESA_CALLBACK_URL || '';
+
+    if (!this.consumerKey || !this.consumerSecret || !this.shortCode || !this.passkey || !this.callbackUrl) {
+      throw new Error('MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE, MPESA_PASSKEY and MPESA_CALLBACK_URL must be configured');
+    }
   }
 
   private async getAccessToken() {

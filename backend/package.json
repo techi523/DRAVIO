@@ -8,7 +8,11 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "tsx --test tests/*.test.ts",
+    "test:compliance": "tsx --test tests/transaction-machine.test.ts tests/privacy-rights.test.ts tests/policy-registry.test.ts tests/provider-intake.test.ts tests/fee-disclosure.test.ts tests/compliance-core.test.ts",
+    "test:security": "tsx --test tests/rbac.test.ts tests/auth-security.test.ts tests/otp.test.ts tests/transaction-machine.test.ts tests/compliance-core.test.ts",
+    "test:fast": "tsx --test tests/money.test.ts tests/billing-decision.test.ts tests/session-state.test.ts tests/rbac.test.ts tests/otp.test.ts tests/auth-security.test.ts tests/transaction-machine.test.ts tests/privacy-rights.test.ts tests/policy-registry.test.ts tests/provider-intake.test.ts tests/fee-disclosure.test.ts tests/compliance-core.test.ts"
   },
   "engines": {
     "node": ">=20.0.0"

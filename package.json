@@ -8,7 +8,21 @@
   ],
   "scripts": {
     "dev": "npm run dev -w apps/buyer-web",
-    "dev:admin": "npm run dev -w apps/admin-portal"
+    "dev:admin": "npm run dev -w apps/admin-portal",
+    "test:unit": "npm --prefix backend test",
+    "test:build-backend": "npm --prefix backend run build",
+    "test:build-buyer": "npm run build -w apps/buyer-web",
+    "test:build-admin": "npm run build -w apps/admin-portal",
+    "test:tsc-mobile": "npx tsc --noEmit -p apps/mobile-app/tsconfig.json",
+    "test:build": "npm run test:build-backend && npm run test:build-buyer && npm run test:build-admin",
+    "test:static": "npm run test:build",
+    "test:all": "npm run test:unit && npm run test:build",
+    "test:e2e-web": "npm run test -w packages/e2e-tests",
+    "test:compliance": "npm --prefix backend run test:compliance",
+    "test:security": "npm --prefix backend run test:security && npm run test:static",
+    "test:fast": "npm --prefix backend run test:fast && npm run test:build-backend",
+    "test:full": "npm run test:fast && npm run test:security && npm run test:compliance && npm run test:e2e-web",
+    "test:mobile": "powershell -ExecutionPolicy Bypass -File docs/testing/emulator-test-harness.ps1"
   },
   "engines": {
     "node": ">=20.0.0"

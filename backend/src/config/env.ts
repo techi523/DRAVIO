@@ -47,7 +47,11 @@ const envSchema = z.object({
   ISP_001_SECRET: z.string().optional(),
 
   // Platform fee
-  PLATFORM_FEE_PCT: z.coerce.number().default(0.10),
+  PLATFORM_FEE_PCT: z.coerce.number().min(0).max(0.5).default(0.20),
+
+  // JWT TTLs (seconds)
+  JWT_ACCESS_TTL: z.coerce.number().default(900),     // 15 minutes
+  JWT_REFRESH_TTL: z.coerce.number().default(2592000), // 30 days
 
   // Stripe checkout
   STRIPE_CHECKOUT_BASE_URL: z.string().default('https://checkout.dravio.com'),
