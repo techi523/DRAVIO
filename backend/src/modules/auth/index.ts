@@ -203,15 +203,13 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
         return sendSuccess(reply, { access_token: accessToken, refresh_token: refreshToken, expires_in: expiresIn });
       }
 
-      // Legacy path: require a still-valid access token and re-issue.
-      try {
-        await request.jwtVerify();
-      } catch {
-        return sendError(reply, 'INVALID_REFRESH_TOKEN', 401);
-      }
-      const user = request.user as any;
-      const { accessToken, refreshToken, expiresIn } = await issueSession(fastify, user.sub, user.roles || ['BUYER']);
-      return sendSuccess(reply, { access_token: accessToken, refresh_token: refreshToken, expires_in: expiresIn });
+      // Security hardening (A-10): Legacy "re-issue from a live access token"
+      // path REMOVED. Re-issuing a session from a valid *access* token means a
+      // leaked access token can mint a session indefinitely AND defeats logout
+      // (logout only revokes refresh tokens). Clients must present the real
+      // refresh token (mobile-app/src/services/api.ts, buyer-web api.ts both
+      // already send refresh_token; the legacy path had zero in-repo callers).
+      return sendError(reply, 'REFRESH_TOKEN_REQUIRED', 400);
     } catch (err: any) {
       fastify.log.error(err);
       return sendError(reply, 'INTERNAL_SERVER_ERROR', 500);

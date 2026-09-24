@@ -2,8 +2,22 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
-const sslConfig = (process.env.DATABASE_URL && process.env.NODE_ENV === 'production')
-  ? { ssl: { rejectUnauthorized: false } }
+// TLS policy for PostgreSQL.
+//
+// DRAVIO hardens toward zero-trust: in PRODUCTION we require a verifiable
+// server certificate chain by default. `PG_SSL_REJECT_UNAUTHORIZED=false` is an
+// explicit, operator-granted override for valid proxy/self-managed deployments
+// (e.g. a corporate TLS-terminating gateway) — we never silently disable
+// verification in production. In local/dev (no DATABASE_URL or non-prod) we keep
+// the historic permissive posture so `start_local_dev.ps1` and WSL/Docker dev
+// keep working unchanged.
+const isProduction = process.env.NODE_ENV === 'production';
+const explicitDisable =
+  (process.env.PG_SSL_REJECT_UNAUTHORIZED || '').toLowerCase() === 'false';
+const sslConfig = process.env.DATABASE_URL
+  ? isProduction
+    ? { ssl: { rejectUnauthorized: !explicitDisable } }
+    : { ssl: { rejectUnauthorized: false } }
   : {};
 
 export const pool = new Pool({

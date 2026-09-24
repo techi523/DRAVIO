@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import axios from 'axios';
-import crypto from 'crypto';
+import { verifySignature, resolveSecret } from './security.js';
 
 interface ISPPackage {
   external_package_id: string;
@@ -77,6 +77,7 @@ class ProductionAdapter {
         current_ip: data.current_ip || '0.0.0.0',
       };
     } catch (err: any) {
+      console.error('[ISP Adapter] activateData failed:', err);
       return { success: false, error: `Activation failed: ${err.message}` };
     }
   }
@@ -94,7 +95,7 @@ class ProductionAdapter {
         bytes_remaining: data.bytes_remaining || 0,
         session_active: data.session_active || false,
       };
-    } catch (err) {
+    } catch (err: any) {
       console.error('[ISP Adapter] checkUsage failed:', err);
       return { activation_id: activationId, bytes_used: 0, bytes_remaining: 0, session_active: false };
     }
@@ -123,40 +124,58 @@ export function registerISPRoutes(fastify: FastifyInstance) {
     return { packages };
   });
 
-  fastify.post('/v1/isp/:ispId/activate', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { ispId } = request.params as any;
-    const adapter = getAdapter(ispId);
-    if (!adapter) return reply.status(404).send({ error: 'ISP_NOT_FOUND' });
-    const { customer_id, package_id, reference } = request.body as any;
-    return await adapter.activateData(customer_id, package_id, reference);
-  });
+  fastify.post(
+    '/v1/isp/:ispId/activate',
+    { preHandler: [(req, reply) => fastify.authenticate(req, reply)] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { ispId } = request.params as any;
+      const adapter = getAdapter(ispId);
+      if (!adapter) return reply.status(404).send({ error: 'ISP_NOT_FOUND' });
+      const { customer_id, package_id, reference } = request.body as any;
+      return await adapter.activateData(customer_id, package_id, reference);
+    }
+  );
 
-  fastify.get('/v1/isp/:ispId/usage/:activationId', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { ispId, activationId } = request.params as any;
-    const adapter = getAdapter(ispId);
-    if (!adapter) return reply.status(404).send({ error: 'ISP_NOT_FOUND' });
-    return await adapter.checkUsage(activationId);
-  });
+  fastify.get(
+    '/v1/isp/:ispId/usage/:activationId',
+    { preHandler: [(req, reply) => fastify.authenticate(req, reply)] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { ispId, activationId } = request.params as any;
+      const adapter = getAdapter(ispId);
+      if (!adapter) return reply.status(404).send({ error: 'ISP_NOT_FOUND' });
+      return await adapter.checkUsage(activationId);
+    }
+  );
 
   fastify.post('/v1/isp/webhook/:ispId/usage', async (request: FastifyRequest, reply: FastifyReply) => {
     const { ispId } = request.params as any;
     const body = request.body;
-    const secret = process.env[`ISP_${ispId.toUpperCase()}_SECRET`] || 'default_secret';
+    const secret = process.env[`ISP_${ispId.toUpperCase()}_SECRET`];
     const signature = request.headers['x-isp-signature'] as string;
+
+    // Fail CLOSED: a caller that can't prove knowledge of the webhook secret
+    // must NOT be trusted with usage data. There is intentionally NO default
+    // secret fallback in this handler — if the secret is not provisioned we
+    // answer 503 so an operator provisions it rather than silently accepting
+    // unsigned usage callbacks.
+    if (!secret) {
+      fastify.log.warn(`[ISP] Webhook secret for ${ispId} is not configured; rejecting callback.`);
+      return reply.status(503).send({ error: 'ISP_WEBHOOK_SECRET_NOT_CONFIGURED' });
+    }
 
     if (!signature) {
       return reply.status(401).send({ error: 'MISSING_SIGNATURE' });
     }
 
-    const expectedSig = crypto.createHmac('sha256', secret)
-      .update(JSON.stringify(body))
-      .digest('hex');
-
-    if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature))) {
+    const payload = typeof body === 'string' ? body : JSON.stringify(body);
+    if (!verifySignature(payload, signature, secret)) {
+      fastify.log.warn(`[ISP] Webhook signature mismatch from ${ispId}; rejecting.`);
       return reply.status(403).send({ error: 'INVALID_SIGNATURE' });
     }
 
-    console.log(`[ISP] Received secure usage webhook from ${ispId}:`, body);
+    fastify.log.info(`[ISP] Received usage webhook from ${ispId} (signature verified).`);
     return { status: 'received' };
   });
 }
+
+export { ProductionAdapter, ISPPackage, ActivationResponse, UsageResponse };
